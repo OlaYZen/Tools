@@ -1,8 +1,8 @@
 # Tools
 A collection of custom tools I regularly use across both Windows and Linux.
 
-## List of applications/dependencies required for the operation of my custom tools.
-## Windows
+## List of applications/dependencies required for the usage of my custom tools.
+### Windows
 `Windows/Hyprland.ahk`
   - [AutoHotkey](https://www.autohotkey.com/)
 
