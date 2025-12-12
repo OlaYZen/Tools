@@ -1,8 +1,6 @@
 ; KDE-style Easy Window Dragging with Windows Key
-SetWinDelay 2
-CoordMode "Mouse"
-
 SetWinDelay(-1)
+CoordMode "Mouse"
 
 #LButton::
 {
@@ -13,27 +11,45 @@ SetWinDelay(-1)
     WinActivate(id)
     WinGetPos &winX, &winY, &winW, &winH, id
 
+    ; Calculate relative position (0 to 1)
+    relX := (startX - winX) / winW
+    relY := (startY - winY) / winH
+
+    ; Zone threshold: 35% for edges
+    threshold := 0.35
+
+    ; Determine zone: -1 = near start, 0 = middle, 1 = near end
+    zoneX := (relX < threshold) ? -1 : (relX > 1 - threshold) ? 1 : 0
+    zoneY := (relY < threshold) ? -1 : (relY > 1 - threshold) ? 1 : 0
+
+    ; Only constrain on pure edges (not corners, not center)
+    pureHorizontalEdge := (zoneX != 0 && zoneY == 0)
+    pureVerticalEdge := (zoneX == 0 && zoneY != 0)
+
+    moveX := !pureVerticalEdge
+    moveY := !pureHorizontalEdge
+
     lastX := startX
     lastY := startY
 
-    pos := Buffer(8)  ; reusable buffer for performance
+    pos := Buffer(8)
 
-    Loop
-    {
+    Loop {
         if !GetKeyState("LButton", "P")
             break
 
-        ; Ultra-fast mouse polling via WinAPI
         DllCall("GetCursorPos", "Ptr", pos)
         curX := NumGet(pos, 0, "Int")
         curY := NumGet(pos, 4, "Int")
 
-        if (curX != lastX || curY != lastY)
-        {
+        if (curX != lastX || curY != lastY) {
             dx := curX - startX
             dy := curY - startY
 
-            WinMove winX + dx, winY + dy, winW, winH, id
+            newX := moveX ? winX + dx : winX
+            newY := moveY ? winY + dy : winY
+
+            WinMove newX, newY, winW, winH, id
 
             lastX := curX
             lastY := curY
@@ -44,33 +60,88 @@ SetWinDelay(-1)
 }
 
 
-
 #RButton::
 {
-    MouseGetPos &KDE_X1, &KDE_Y1, &KDE_id
-    if WinGetMinMax(KDE_id)
+    MouseGetPos &startX, &startY, &winId
+    if WinGetMinMax(winId)
         return
-    WinGetPos &KDE_WinX1, &KDE_WinY1, &KDE_WinW, &KDE_WinH, KDE_id
-    KDE_WinLeft := (KDE_X1 < KDE_WinX1 + KDE_WinW / 2) ? 1 : -1
-    KDE_WinUp := (KDE_Y1 < KDE_WinY1 + KDE_WinH / 2) ? 1 : -1
-    Loop
-    {
+
+    WinGetPos &winX, &winY, &winW, &winH, winId
+
+    ; Calculate relative position (0 to 1)
+    relX := (startX - winX) / winW
+    relY := (startY - winY) / winH
+
+    ; Zone threshold: 35% for corners, 30% middle (10% tolerance built in)
+    threshold := 0.35
+
+    ; Determine zone: -1 = near start, 0 = middle, 1 = near end
+    zoneX := (relX < threshold) ? -1 : (relX > 1 - threshold) ? 1 : 0
+    zoneY := (relY < threshold) ? -1 : (relY > 1 - threshold) ? 1 : 0
+
+    ; Center zone - do nothing
+    if (zoneX == 0 && zoneY == 0)
+        return
+
+    ; Determine resize behavior
+    ; Corners: resize both | Edges: resize single dimension
+    isCorner := (zoneX != 0 && zoneY != 0)
+
+    resizeW := (zoneX != 0) || isCorner
+    resizeH := (zoneY != 0) || isCorner
+
+    ; For edges, constrain to single axis
+    if (!isCorner) {
+        resizeW := (zoneX != 0)
+        resizeH := (zoneY != 0)
+    }
+
+    ; Anchor opposite edge (left zone = anchor right, etc.)
+    anchorRight := (zoneX == -1)
+    anchorBottom := (zoneY == -1)
+
+    prevX := startX
+    prevY := startY
+
+    Loop {
         if !GetKeyState("RButton", "P")
             break
-        MouseGetPos &KDE_X2, &KDE_Y2
-        WinGetPos &KDE_WinX1, &KDE_WinY1, &KDE_WinW, &KDE_WinH, KDE_id
-        KDE_X2 -= KDE_X1
-        KDE_Y2 -= KDE_Y1
-        WinMove KDE_WinX1 + (KDE_WinLeft+1)/2*KDE_X2
-              , KDE_WinY1 + (KDE_WinUp+1)/2*KDE_Y2
-              , KDE_WinW - KDE_WinLeft*KDE_X2
-              , KDE_WinH - KDE_WinUp*KDE_Y2
-              , KDE_id
-        KDE_X1 += KDE_X2
-        KDE_Y1 += KDE_Y2
+
+        MouseGetPos &currX, &currY
+        WinGetPos &winX, &winY, &winW, &winH, winId
+
+        dX := currX - prevX
+        dY := currY - prevY
+
+        newX := winX
+        newY := winY
+        newW := winW
+        newH := winH
+
+        if (resizeW) {
+            if (anchorRight) {
+                newX += dX
+                newW -= dX
+            } else {
+                newW += dX
+            }
+        }
+
+        if (resizeH) {
+            if (anchorBottom) {
+                newY += dY
+                newH -= dY
+            } else {
+                newH += dY
+            }
+        }
+
+        WinMove newX, newY, newW, newH, winId
+
+        prevX := currX
+        prevY := currY
     }
 }
-
 #f::
 {
     MouseGetPos ,, &KDE_id
