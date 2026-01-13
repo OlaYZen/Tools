@@ -1,8 +1,8 @@
 # Tools
 A collection of custom tools I regularly use across both Windows and Linux.
 
-## List of applications/dependencies required for the usage of my custom tools.
-### Windows
+## Windows
+  
 `Windows/Hyprland.ahk`
   - [AutoHotkey](https://www.autohotkey.com/)
   - [Windows Terminal](https://github.com/microsoft/terminal) 
@@ -26,4 +26,16 @@ ebrc/rbrc                       Edit .bashrc / Reload .bashrc (Is from my Linux 
 claer                           Custom function for clear (incase you do a spelling error(Happens a lot))
 grep                            Custom function for findstr
 cff                             Custom function for clear && fastfetch
+```
+
+## Linux
+`Linux/.bashrc`
+##### Description
+```
+My custom made bashrc with multiple functions and shortcuts. Some functions only work on Arch Linux.  Dont know the requirements
+```
+`Linux/Scripts/*`
+##### Description
+```
+The folder name should be self explanatory. Dont know the requirements. 
 ```
