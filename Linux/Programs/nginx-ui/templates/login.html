@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Nginx UI</title>
+    <meta name="darkreader-lock">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='input.css') }}">
+    <script src="{{ url_for('static', filename='input.js') }}"></script>
+</head>
+<body style="min-height: 100vh; display: flex; align-items: center; justify-content: center;">
+    <div class="login-container">
+        <div class="logo">
+            <h1>Nginx UI</h1>
+            <p>Configuration File Manager</p>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <form id="loginForm">
+            
+            <div class="inputContainer inputContainerSpacing">
+                <input type="text" id="username" name="username" required autocomplete="username" onfocus="updatePlaceHolder('username')" style="width: 250px;">
+                <div class="labelContainer">
+                    <p id="usernameplaceholder" class="placeholder" style="left: 139px;">Username</p>
+                </div>
+            </div> 
+
+            <div class="inputContainer inputContainerSpacing">
+                <input type="password" id="password" name="password" required autocomplete="current-password" onfocus="updatePlaceHolder('password')" style="width: 250px;">
+                <div class="labelContainer">
+                    <p id="passwordplaceholder" class="placeholder" style="left: 139px;">Password</p>
+                    <p id="hideShowpassword" class="hideShow" onmousedown="togglePassword('password')" style="position: relative;right: 137px;bottom: 4px;color: var(--text-color);">Show</p>
+                </div>
+            </div> 
+
+            <button type="submit" class="submit-btn" id="submitBtn">Login</button>
+
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        const errorMessage = document.getElementById('errorMessage');
+        const submitBtn = document.getElementById('submitBtn');
+        let lockoutTimer = null;
+        let lockoutEndTime = null;
+
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('password');
+            const toggleIcon = document.getElementById('passwordToggleIcon');
+            const toggleBtn = document.querySelector('.password-toggle');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.textContent = '🙈';
+                toggleBtn.title = 'Hide password';
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.textContent = '👁️';
+                toggleBtn.title = 'Show password';
+            }
+        }
+
+        function updateLockoutTimer() {
+            if (!lockoutEndTime) return;
+            
+            const now = Date.now();
+            const remaining = Math.max(0, Math.floor((lockoutEndTime - now) / 1000));
+            
+            if (remaining <= 0) {
+                clearInterval(lockoutTimer);
+                lockoutTimer = null;
+                lockoutEndTime = null;
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Login';
+                errorMessage.classList.remove('show');
+                return;
+            }
+            
+            const minutes = Math.floor(remaining / 60);
+            const seconds = remaining % 60;
+            let timeText = '';
+            if (minutes > 0) {
+                timeText = `${minutes}m ${seconds}s`;
+            } else {
+                timeText = `${seconds}s`;
+            }
+            
+            submitBtn.textContent = `Locked (${timeText})`;
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            errorMessage.classList.remove('show');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Logging in...';
+            
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Store password change requirement in session storage
+                    if (data.must_change_password) {
+                        sessionStorage.setItem('must_change_password', 'true');
+                    } else {
+                        sessionStorage.removeItem('must_change_password');
+                    }
+                    window.location.href = '/';
+                } else {
+                    errorMessage.textContent = data.error || 'Login failed';
+                    errorMessage.classList.add('show');
+                    
+                    // Handle lockout
+                    if (data.locked && data.retry_after) {
+                        lockoutEndTime = Date.now() + (data.retry_after * 1000);
+                        if (lockoutTimer) clearInterval(lockoutTimer);
+                        lockoutTimer = setInterval(updateLockoutTimer, 1000);
+                        updateLockoutTimer();
+                    } else {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Login';
+                    }
+                }
+            } catch (error) {
+                errorMessage.textContent = 'Network error. Please try again.';
+                errorMessage.classList.add('show');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Login';
+            }
+        });
+    </script>
+</body>
+</html>
+

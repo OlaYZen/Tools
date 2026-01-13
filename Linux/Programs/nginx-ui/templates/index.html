@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nginx UI - File Manager</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='reset.css') }}">
+    <meta name="darkreader-lock">
+</head>
+<body>
+    <div class="header">
+        <h1>Nginx UI</h1>
+        <div class="header-actions">
+            <span>Welcome, <strong id="username"></strong></span>
+            <button class="btn btn-primary" onclick="showSettings()">Settings</button>
+            <button class="btn btn-primary" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <div class="toolbar">
+                <button class="btn btn-primary" onclick="showCreateModal('file')">📄 New File</button>
+                <button class="btn btn-primary" onclick="showCreateModal('directory')">📁 New Folder</button>
+            </div>
+            <div class="sidebar-header">
+                <div class="breadcrumb" id="breadcrumb"></div>
+            </div>
+            <div class="file-list" id="fileList"></div>
+        </div>
+
+        <div class="editor-container">
+            <div class="editor-header">
+                <div class="editor-title" id="editorTitle">No file selected</div>
+                <div class="editor-actions">
+                    <button class="btn btn-success" id="saveBtn" onclick="saveFile()" style="display: none;">💾 Save</button>
+                    <button class="btn btn-danger" id="deleteBtn" onclick="deleteFile()" style="display: none;">🗑️ Delete</button>
+                </div>
+            </div>
+            <div class="editor-wrapper">
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-state-icon">📝</div>
+                    <div class="empty-state-text">Select a file to edit</div>
+                </div>
+                <div id="editor" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Modal -->
+    <div class="modal" id="createModal">
+        <div class="modal-content">
+            <div class="modal-header" id="createModalTitle">Create New File</div>
+            <div class="form-group">
+                <label for="newItemName">Name</label>
+                <input type="text" id="newItemName" placeholder="Enter name..." onkeypress="handleCreateKeyPress(event)">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="hideCreateModal()">Cancel</button>
+                <button class="btn btn-success" onclick="createItem()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">Settings</div>
+            
+            <!-- Account Settings -->
+            <div style="margin-bottom: 25px;">
+                <h3 style="font-size: 16px; color: #3794ff; margin-bottom: 15px; border-bottom: 1px solid #3e3e42; padding-bottom: 8px;">Account Settings</h3>
+                <div class="form-group">
+                    <label for="settingsUsername">Username</label>
+                    <input type="text" id="settingsUsername" placeholder="Enter new username">
+                    <small style="color: #858585; font-size: 12px; display: block; margin-top: 5px;">Change your login username</small>
+                </div>
+            </div>
+
+            <!-- Password Change -->
+            <div style="margin-bottom: 25px;">
+                <h3 style="font-size: 16px; color: #3794ff; margin-bottom: 15px; border-bottom: 1px solid #3e3e42; padding-bottom: 8px;">Change Password</h3>
+                <div class="form-group">
+                    <label for="settingsCurrentPassword">Current Password</label>
+                    <input type="password" id="settingsCurrentPassword" placeholder="Enter current password" autocomplete="current-password">
+                </div>
+                <div class="form-group">
+                    <label for="settingsNewPassword">New Password (min 8 characters)</label>
+                    <input type="password" id="settingsNewPassword" placeholder="Enter new password" autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label for="settingsConfirmPassword">Confirm New Password</label>
+                    <input type="password" id="settingsConfirmPassword" placeholder="Confirm new password" autocomplete="new-password">
+                </div>
+            </div>
+
+            <!-- Application Settings -->
+            <div style="margin-bottom: 25px;">
+                <h3 style="font-size: 16px; color: #3794ff; margin-bottom: 15px; border-bottom: 1px solid #3e3e42; padding-bottom: 8px;">Application Settings</h3>
+            <div class="form-group">
+                <label for="nginxDir">Nginx Configuration Directory</label>
+                <input type="text" id="nginxDir" placeholder="/etc/nginx">
+            </div>
+            </div>
+
+            <!-- Docker Settings -->
+            <div style="margin-bottom: 25px;">
+                <h3 style="font-size: 16px; color: #3794ff; margin-bottom: 15px; border-bottom: 1px solid #3e3e42; padding-bottom: 8px;">Docker Settings</h3>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="dockerEnabled" style="width: auto; margin-right: 8px;">
+                        Enable Docker Mode
+                    </label>
+                    <small style="color: #858585; font-size: 12px; display: block; margin-top: 5px; margin-left: 28px;">Use Docker to execute nginx commands instead of direct system commands</small>
+                </div>
+
+                <div class="form-group" id="dockerContainerGroup" style="display: none;">
+                    <label for="dockerContainerName">Docker Container Name</label>
+                    <input type="text" id="dockerContainerName" placeholder="nginx">
+                    <small style="color: #858585; font-size: 12px; display: block; margin-top: 5px;">Name of the Docker container running nginx</small>
+                </div>
+            </div>
+
+            <!-- Editor Settings -->
+            <div style="margin-bottom: 25px;">
+                <h3 style="font-size: 16px; color: #3794ff; margin-bottom: 15px; border-bottom: 1px solid #3e3e42; padding-bottom: 8px;">Editor Settings</h3>
+                
+                <div class="form-group">
+                    <label>Font Size</label>
+                    <input type="number" id="editorFontSize" min="10" max="24" value="14" style="width: 100px;">
+                    <small style="color: #858585; font-size: 12px; display: block; margin-top: 5px;">Editor font size (10-24px)</small>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="editorMinimap" checked style="width: auto; margin-right: 8px;">
+                        Show Minimap
+                    </label>
+                    <small style="color: #858585; font-size: 12px; display: block; margin-top: 5px; margin-left: 28px;">Display code overview minimap on the right</small>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="editorWordWrap" style="width: auto; margin-right: 8px;">
+                        Word Wrap
+                    </label>
+                    <small style="color: #858585; font-size: 12px; display: block; margin-top: 5px; margin-left: 28px;">Wrap long lines to fit in viewport</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Tab Size</label>
+                    <input type="number" id="editorTabSize" min="2" max="8" value="2" style="width: 100px;">
+                    <small style="color: #858585; font-size: 12px; display: block; margin-top: 5px;">Number of spaces for indentation (2-8)</small>
+                </div>
+            </div>
+
+            <!-- Keyboard Shortcuts -->
+            <div style="margin-bottom: 25px;">
+                <h3 style="font-size: 16px; color: #3794ff; margin-bottom: 15px; border-bottom: 1px solid #3e3e42; padding-bottom: 8px;">Keyboard Shortcuts</h3>
+                
+                <div style="background: #1e1e1e; padding: 15px; border-radius: 6px; border: 1px solid #3e3e42;">
+                    <div style="margin-bottom: 15px;">
+                        <label style="color: #cccccc; display: block; margin-bottom: 8px;">Save File</label>
+                        <input type="text" id="shortcutSave" placeholder="Press keys..." readonly 
+                               style="cursor: pointer; background: #2d2d30; border: 1px solid #3e3e42; padding: 8px 12px; border-radius: 4px; color: #4caf50; font-family: monospace;"
+                               onclick="recordShortcut('save', this)">
+                        <small style="color: #858585; font-size: 11px; display: block; margin-top: 5px;">Click to record new shortcut (default: Ctrl+S)</small>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="color: #cccccc; display: block; margin-bottom: 8px;">Toggle Comment</label>
+                        <input type="text" id="shortcutComment" placeholder="Press keys..." readonly
+                               style="cursor: pointer; background: #2d2d30; border: 1px solid #3e3e42; padding: 8px 12px; border-radius: 4px; color: #4caf50; font-family: monospace;"
+                               onclick="recordShortcut('comment', this)">
+                        <small style="color: #858585; font-size: 11px; display: block; margin-top: 5px;">Click to record new shortcut (default: Ctrl+')</small>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="resetShortcuts()" style="margin-top: 10px; padding: 6px 12px; font-size: 12px;">
+                        Reset to Defaults
+                    </button>
+                </div>
+                
+                <div style="background: #2d2d30; padding: 12px; border-radius: 6px; border: 1px solid #3e3e42; margin-top: 15px;">
+                    <strong style="color: #3794ff; font-size: 13px;">Built-in Monaco Shortcuts:</strong>
+                    <div style="margin-top: 10px; font-size: 12px; color: #999;">
+                        <div style="margin-bottom: 6px;"><code style="color: #3794ff;">Ctrl+F</code> - Find</div>
+                        <div style="margin-bottom: 6px;"><code style="color: #3794ff;">Ctrl+H</code> - Find & Replace</div>
+                        <div style="margin-bottom: 6px;"><code style="color: #3794ff;">Ctrl+G</code> - Go to Line</div>
+                        <div style="margin-bottom: 6px;"><code style="color: #3794ff;">Ctrl+Z/Y</code> - Undo/Redo</div>
+                        <div style="margin-bottom: 6px;"><code style="color: #3794ff;">Ctrl+D</code> - Select Next Occurrence</div>
+                        <div><code style="color: #3794ff;">F1</code> - Command Palette</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="hideSettings()">Cancel</button>
+                <button class="btn btn-success" onclick="saveSettings()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Force Password Change Modal -->
+    <div class="modal" id="forcePasswordChangeModal" style="background: rgba(0, 0, 0, 0.9);">
+        <div class="modal-content">
+            <div class="modal-header" style="color: #f48771;">⚠️ Password Change Required</div>
+            <p style="margin-bottom: 20px; color: #cccccc;">You are using the default password. For security reasons, you must change your password before continuing.</p>
+            <div class="form-group">
+                <label for="currentPassword">Current Password</label>
+                <input type="password" id="currentPassword" placeholder="Enter current password" autocomplete="current-password">
+            </div>
+            <div class="form-group">
+                <label for="newPassword">New Password (min 8 characters)</label>
+                <input type="password" id="newPassword" placeholder="Enter new password" autocomplete="new-password">
+            </div>
+            <div class="form-group">
+                <label for="confirmPassword">Confirm New Password</label>
+                <input type="password" id="confirmPassword" placeholder="Confirm new password" autocomplete="new-password">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-success" onclick="changePasswordForced()">Change Password</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header" style="color: #f48771;">⚠️ Confirm Deletion</div>
+            <p id="deleteModalMessage" style="margin-bottom: 20px; color: #cccccc; line-height: 1.5;"></p>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="hideDeleteModal()">Cancel</button>
+                <button class="btn btn-danger" id="confirmDeleteBtn" onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
+
