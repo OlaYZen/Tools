@@ -1237,6 +1237,8 @@ zabbix_export:
                   value: IF-MIB
                 - tag: traffic_type
                   value: status
+                - tag: oper_status
+                  value: interface
 
             # Traffic
             - uuid: 27b221b50c204c4392cf6d18dc2a12ab
