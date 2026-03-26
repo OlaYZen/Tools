@@ -1,0 +1,2220 @@
+zabbix_export:
+  version: '7.4'
+  template_groups:
+    - uuid: 98bf814d81dc48d5a2872a681dcb9108
+      name: 'Templates/Network devices'
+  templates:
+    - uuid: c0c9f082ea2a46b489d8abffbfb6269d
+      template: 'ZyXEL GS1900-48'
+      name: 'ZyXEL GS1900-48 SNMP'
+      description: |
+        ZyXEL GS1900-48 48-port GbE Smart Managed Switch.
+        Requires SNMPv2c. Uses standard IF-MIB, BRIDGE-MIB, LLDP-MIB + ZyXEL enterprise MIB (1.3.6.1.4.1.890.1.15).
+        Built for Zabbix 7.4.
+
+        Set macro {$SNMP_COMMUNITY} on the host to your community string.
+        Enable SNMP on switch: Management > SNMP > Global Settings.
+
+        GS1900-48: 48x GbE RJ45 + 2x SFP uplinks. Fanless design.
+
+        Items marked [MAY NOT RESPOND] depend on firmware version - verify with snmpget before relying on them.
+      groups:
+        - name: 'Templates/Network devices'
+
+      macros:
+        - macro: '{$SNMP_COMMUNITY}'
+          value: public
+          description: 'SNMPv2c community string'
+        - macro: '{$IF_UTIL_MAX}'
+          value: '90'
+          description: 'Interface bandwidth utilization % warning threshold'
+        - macro: '{$IF_ERRORS_WARN}'
+          value: '2'
+          description: 'Interface errors/s warning threshold'
+        - macro: '{$PING_LOSS_WARN}'
+          value: '20'
+          description: 'ICMP packet loss % warning threshold'
+        - macro: '{$CPU_UTIL_MAX}'
+          value: '90'
+          description: 'CPU utilization % warning threshold'
+        - macro: '{$MEM_AVAIL_MIN}'
+          value: '10'
+          description: 'Trigger when available memory drops below this % threshold'
+        - macro: '{$IF_LINK_DOWN_DISABLE}'
+          value: ''
+          description: 'Set to any value to suppress link-down triggers on specific interfaces (apply per-host override)'
+
+      valuemaps:
+        - uuid: b1ed9efe5d4044de83dcbefcbb2a9ae5
+          name: 'IF-MIB::ifAdminStatus'
+          mappings:
+            - value: '1'
+              newvalue: up
+            - value: '2'
+              newvalue: down
+            - value: '3'
+              newvalue: testing
+        - uuid: f29ed224b2754d09ae778e0c06da85b4
+          name: 'IF-MIB::ifOperStatus'
+          mappings:
+            - value: '1'
+              newvalue: up
+            - value: '2'
+              newvalue: down
+            - value: '3'
+              newvalue: testing
+            - value: '4'
+              newvalue: unknown
+            - value: '5'
+              newvalue: dormant
+            - value: '6'
+              newvalue: notPresent
+            - value: '7'
+              newvalue: lowerLayerDown
+        - uuid: 2dfce08bebdc4811bd41fc5492213628
+          name: 'Service state'
+          mappings:
+            - value: '0'
+              newvalue: Down
+            - value: '1'
+              newvalue: Up
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60010
+          name: 'LLDP-MIB::lldpRemChassisIdSubtype'
+          mappings:
+            - value: '1'
+              newvalue: chassisComponent
+            - value: '2'
+              newvalue: interfaceAlias
+            - value: '3'
+              newvalue: portComponent
+            - value: '4'
+              newvalue: macAddress
+            - value: '5'
+              newvalue: networkAddress
+            - value: '6'
+              newvalue: interfaceName
+            - value: '7'
+              newvalue: local
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60011
+          name: 'BRIDGE-MIB::dot1dStpPortState'
+          mappings:
+            - value: '1'
+              newvalue: disabled
+            - value: '2'
+              newvalue: blocking
+            - value: '3'
+              newvalue: listening
+            - value: '4'
+              newvalue: learning
+            - value: '5'
+              newvalue: forwarding
+            - value: '6'
+              newvalue: broken
+
+      items:
+        # ── Availability ───────────────────────────────────────────────────────
+        - uuid: bef4c70fc20b4f6f9a927b31b30ef81d
+          name: 'ICMP ping'
+          type: SIMPLE
+          key: icmpping
+          delay: 1m
+          history: 7d
+          trends: 365d
+          valuemap:
+            name: 'Service state'
+          tags:
+            - tag: component
+              value: availability
+            - tag: scope
+              value: availability
+            - tag: layer
+              value: L3
+            - tag: protocol
+              value: ICMP
+            - tag: metric_type
+              value: gauge
+            - tag: mib
+              value: SIMPLE
+
+        - uuid: 09db9b8eb5a849f7be4fec89eb02edcf
+          name: 'ICMP packet loss'
+          type: SIMPLE
+          key: icmppingloss
+          delay: 1m
+          history: 7d
+          trends: 365d
+          units: '%'
+          tags:
+            - tag: component
+              value: availability
+            - tag: scope
+              value: availability
+            - tag: layer
+              value: L3
+            - tag: protocol
+              value: ICMP
+            - tag: metric_type
+              value: gauge
+            - tag: mib
+              value: SIMPLE
+
+        - uuid: 6290fa73c0434de2801567ae1fe8bf63
+          name: 'ICMP response time'
+          type: SIMPLE
+          key: icmppingsec
+          delay: 1m
+          history: 7d
+          trends: 365d
+          units: s
+          tags:
+            - tag: component
+              value: availability
+            - tag: scope
+              value: performance
+            - tag: layer
+              value: L3
+            - tag: protocol
+              value: ICMP
+            - tag: metric_type
+              value: gauge
+            - tag: mib
+              value: SIMPLE
+
+        # ── System identity (standard MIB-II) ─────────────────────────────────
+        - uuid: 5b49861a35704e0594b11c57e6181564
+          name: 'System description'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.1.1.0'
+          key: system.descr
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'sysDescr - full hardware/firmware description string'
+          tags:
+            - tag: component
+              value: system
+            - tag: scope
+              value: inventory
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: text
+            - tag: mib
+              value: SNMPv2-MIB
+
+        - uuid: 7cdfe9e5c0384b0294993010a6c7a541
+          name: 'System name'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.1.5.0'
+          key: system.name
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'sysName - administratively assigned hostname'
+          tags:
+            - tag: component
+              value: system
+            - tag: scope
+              value: inventory
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: text
+            - tag: mib
+              value: SNMPv2-MIB
+
+        - uuid: fc7bf460d57a423ab609ecc4141acaa8
+          name: 'System location'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.1.6.0'
+          key: system.location
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'sysLocation - physical location of switch'
+          tags:
+            - tag: component
+              value: system
+            - tag: scope
+              value: inventory
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: text
+            - tag: mib
+              value: SNMPv2-MIB
+
+        - uuid: 3b08759dcec449f3a82c51ac9d2b6350
+          name: 'System contact'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.1.4.0'
+          key: system.contact
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'sysContact - contact person for this switch'
+          tags:
+            - tag: component
+              value: system
+            - tag: scope
+              value: inventory
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: text
+            - tag: mib
+              value: SNMPv2-MIB
+
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60012
+          name: 'System OID'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.1.2.0'
+          key: system.objectid
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'sysObjectID - vendor enterprise OID identifying this device type'
+          tags:
+            - tag: component
+              value: system
+            - tag: scope
+              value: inventory
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: text
+            - tag: mib
+              value: SNMPv2-MIB
+
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60013
+          name: 'System services'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.1.7.0'
+          key: system.services
+          delay: 1h
+          history: 7d
+          trends: '0'
+          description: 'sysServices - bitmask of OSI layers supported (79 = L2 switch)'
+          tags:
+            - tag: component
+              value: system
+            - tag: scope
+              value: inventory
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: gauge
+            - tag: mib
+              value: SNMPv2-MIB
+
+        - uuid: 74837e18baaf44bdb34702480961ae91
+          name: 'System uptime'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.1.3.0'
+          key: system.uptime
+          delay: 5m
+          history: 7d
+          units: uptime
+          description: 'sysUpTime - centiseconds from agent start, converted to seconds via 0.01 multiplier'
+          preprocessing:
+            - type: MULTIPLIER
+              parameters:
+                - '0.01'
+          tags:
+            - tag: component
+              value: system
+            - tag: scope
+              value: availability
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: gauge
+            - tag: mib
+              value: SNMPv2-MIB
+
+        - uuid: ba8489ecf3be416cb3bfed6781d7ad42
+          name: 'Total interface count'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.2.1.0'
+          key: if.number
+          delay: 1h
+          history: 7d
+          description: 'ifNumber - total number of interfaces including internal/loopback'
+          tags:
+            - tag: component
+              value: interfaces
+            - tag: scope
+              value: inventory
+            - tag: layer
+              value: L2
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: gauge
+            - tag: mib
+              value: IF-MIB
+
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60014
+          name: 'Switch base MAC address'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.17.1.1.0'
+          key: system.mac
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'dot1dBaseBridgeAddress - switch base MAC (matches label on device)'
+          tags:
+            - tag: component
+              value: system
+            - tag: scope
+              value: inventory
+            - tag: layer
+              value: L2
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: text
+            - tag: mib
+              value: BRIDGE-MIB
+
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60015
+          name: 'Bridge port count'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.17.1.2.0'
+          key: bridge.port.count
+          delay: 1h
+          history: 7d
+          description: 'dot1dBaseNumPorts - number of ports in this bridge'
+          tags:
+            - tag: component
+              value: system
+            - tag: scope
+              value: inventory
+            - tag: layer
+              value: L2
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: gauge
+            - tag: mib
+              value: BRIDGE-MIB
+
+        # ── System (ZyXEL enterprise MIB 1.3.6.1.4.1.890.1.15) ────────────────
+        - uuid: c1d76fb407974329a769ede9795c9b2c
+          name: 'Serial number'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.4.1.890.1.15.3.1.12.0'
+          key: system.serialnumber
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'ZyXEL enterprise - device serial number'
+          tags:
+            - tag: component
+              value: system
+            - tag: scope
+              value: inventory
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: text
+            - tag: mib
+              value: ZYXEL-MIB
+
+        - uuid: 6a0dd59b364341d482e04121bfd651a3
+          name: 'Firmware version'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.4.1.890.1.15.3.1.6.0'
+          key: system.hw.firmware
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'ZyXEL enterprise - running firmware version string'
+          tags:
+            - tag: component
+              value: system
+            - tag: scope
+              value: inventory
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: text
+            - tag: mib
+              value: ZYXEL-MIB
+
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60016
+          name: 'Hardware version'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.4.1.890.1.15.3.1.7.0'
+          key: system.hw.version
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'ZyXEL enterprise - hardware revision string'
+          tags:
+            - tag: component
+              value: system
+            - tag: scope
+              value: inventory
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: text
+            - tag: mib
+              value: ZYXEL-MIB
+
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60017
+          name: 'Model name'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.4.1.890.1.15.3.1.1.0'
+          key: system.hw.model
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'ZyXEL enterprise - model name string'
+          tags:
+            - tag: component
+              value: system
+            - tag: scope
+              value: inventory
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: text
+            - tag: mib
+              value: ZYXEL-MIB
+
+        # ── CPU ───────────────────────────────────────────────────────────────
+        - uuid: 989dc5966a354be9b0d2129b180cf246
+          name: 'CPU utilization (current)'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.4.1.890.1.15.3.2.4.0'
+          key: system.cpu.util
+          delay: 1m
+          history: 7d
+          trends: 365d
+          units: '%'
+          description: 'ZyXEL enterprise - current CPU utilization %'
+          tags:
+            - tag: component
+              value: cpu
+            - tag: scope
+              value: performance
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: gauge
+            - tag: mib
+              value: ZYXEL-MIB
+            - tag: unit
+              value: percent
+            - tag: avg_window
+              value: instant
+
+        - uuid: 704e7d52a9ae4a31a169a0041b298664
+          name: 'CPU utilization (1min avg)'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.4.1.890.1.15.3.2.8.0'
+          key: system.cpu.util1
+          delay: 1m
+          history: 7d
+          trends: 365d
+          units: '%'
+          description: 'ZyXEL enterprise - 1 minute average CPU utilization %'
+          tags:
+            - tag: component
+              value: cpu
+            - tag: scope
+              value: performance
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: gauge
+            - tag: mib
+              value: ZYXEL-MIB
+            - tag: unit
+              value: percent
+            - tag: avg_window
+              value: 1min
+
+        - uuid: 798604021ac646d5857e87cfcdce4b3a
+          name: 'CPU utilization (5min avg)'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.4.1.890.1.15.3.2.9.0'
+          key: system.cpu.util5
+          delay: 5m
+          history: 7d
+          trends: 365d
+          units: '%'
+          description: 'ZyXEL enterprise - 5 minute average CPU utilization %'
+          tags:
+            - tag: component
+              value: cpu
+            - tag: scope
+              value: performance
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: gauge
+            - tag: mib
+              value: ZYXEL-MIB
+            - tag: unit
+              value: percent
+            - tag: avg_window
+              value: 5min
+
+        # ── Memory ────────────────────────────────────────────────────────────
+        - uuid: 2b640e6f1125422c899d3b70abdd6cd5
+          name: 'Available memory'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.4.1.890.1.15.3.2.5.0'
+          key: system.memory.avail
+          delay: 1m
+          history: 7d
+          trends: 365d
+          units: '%'
+          description: 'ZyXEL enterprise - available memory as % free (source for avg items)'
+          tags:
+            - tag: component
+              value: memory
+            - tag: scope
+              value: performance
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: gauge
+            - tag: mib
+              value: ZYXEL-MIB
+            - tag: unit
+              value: percent
+            - tag: avg_window
+              value: instant
+
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60002
+          name: 'Available memory (1min avg)'
+          type: CALCULATED
+          key: system.memory.avail1
+          delay: 1m
+          history: 7d
+          trends: 365d
+          units: '%'
+          params: 'avg(//system.memory.avail,1m)'
+          description: '1 minute rolling average of available memory % free'
+          tags:
+            - tag: component
+              value: memory
+            - tag: scope
+              value: performance
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: calculated
+            - tag: metric_type
+              value: gauge
+            - tag: unit
+              value: percent
+            - tag: avg_window
+              value: 1min
+
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60003
+          name: 'Available memory (5min avg)'
+          type: CALCULATED
+          key: system.memory.avail5
+          delay: 5m
+          history: 7d
+          trends: 365d
+          units: '%'
+          params: 'avg(//system.memory.avail,5m)'
+          description: '5 minute rolling average of available memory % free'
+          tags:
+            - tag: component
+              value: memory
+            - tag: scope
+              value: performance
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: calculated
+            - tag: metric_type
+              value: gauge
+            - tag: unit
+              value: percent
+            - tag: avg_window
+              value: 5min
+
+        - uuid: 0df962c778514347b6cbacce5e12b2ae
+          name: 'Memory utilization'
+          type: CALCULATED
+          key: system.memory.util
+          delay: 1m
+          history: 7d
+          trends: 365d
+          units: '%'
+          params: '100-last(//system.memory.avail)'
+          description: 'Memory utilization % (100 - available %)'
+          tags:
+            - tag: component
+              value: memory
+            - tag: scope
+              value: performance
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: calculated
+            - tag: metric_type
+              value: gauge
+            - tag: unit
+              value: percent
+            - tag: avg_window
+              value: instant
+
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60018
+          name: 'Memory utilization (1min avg)'
+          type: CALCULATED
+          key: system.memory.util1
+          delay: 1m
+          history: 7d
+          trends: 365d
+          units: '%'
+          params: '100-avg(//system.memory.avail,1m)'
+          description: '1 minute rolling average memory utilization %'
+          tags:
+            - tag: component
+              value: memory
+            - tag: scope
+              value: performance
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: calculated
+            - tag: metric_type
+              value: gauge
+            - tag: unit
+              value: percent
+            - tag: avg_window
+              value: 1min
+
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60019
+          name: 'Memory utilization (5min avg)'
+          type: CALCULATED
+          key: system.memory.util5
+          delay: 5m
+          history: 7d
+          trends: 365d
+          units: '%'
+          params: '100-avg(//system.memory.avail,5m)'
+          description: '5 minute rolling average memory utilization %'
+          tags:
+            - tag: component
+              value: memory
+            - tag: scope
+              value: performance
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: calculated
+            - tag: metric_type
+              value: gauge
+            - tag: unit
+              value: percent
+            - tag: avg_window
+              value: 5min
+        # ── SNMP agent stats ──────────────────────────────────────────────────
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60022
+          name: 'SNMP traps received'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.11.20.0'
+          key: snmp.traps.received
+          delay: 5m
+          history: 7d
+          trends: 365d
+          description: 'snmpInTraps - traps received by this SNMP agent'
+          preprocessing:
+            - type: CHANGE_PER_SECOND
+              parameters: []
+          tags:
+            - tag: component
+              value: snmp
+            - tag: scope
+              value: performance
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: rate
+            - tag: mib
+              value: SNMPv2-MIB
+            - tag: counter_type
+              value: derived
+
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60023
+          name: 'SNMP get requests'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.11.1.0'
+          key: snmp.get.requests
+          delay: 5m
+          history: 7d
+          trends: 365d
+          description: 'snmpInGetRequests - SNMP GET requests received'
+          preprocessing:
+            - type: CHANGE_PER_SECOND
+              parameters: []
+          tags:
+            - tag: component
+              value: snmp
+            - tag: scope
+              value: performance
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: rate
+            - tag: mib
+              value: SNMPv2-MIB
+            - tag: counter_type
+              value: derived
+
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60024
+          name: 'SNMP total input packets'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.11.1.0'
+          key: snmp.in.packets
+          delay: 5m
+          history: 7d
+          trends: 365d
+          description: 'snmpInPkts - total SNMP messages received'
+          preprocessing:
+            - type: CHANGE_PER_SECOND
+              parameters: []
+          tags:
+            - tag: component
+              value: snmp
+            - tag: scope
+              value: performance
+            - tag: layer
+              value: L7
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: rate
+            - tag: mib
+              value: SNMPv2-MIB
+            - tag: counter_type
+              value: derived
+
+        # ── STP/RSTP global ───────────────────────────────────────────────────
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60030
+          name: 'STP root bridge ID'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.17.2.5.0'
+          key: stp.root.id
+          delay: 5m
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'dot1dStpDesignatedRoot - BID of the current STP root bridge'
+          tags:
+            - tag: component
+              value: stp
+            - tag: scope
+              value: network
+            - tag: layer
+              value: L2
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: text
+            - tag: mib
+              value: BRIDGE-MIB
+
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60031
+          name: 'STP root port'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.17.2.7.0'
+          key: stp.root.port
+          delay: 5m
+          history: 7d
+          trends: 365d
+          description: 'dot1dStpRootPort - port through which root bridge is reachable (0 = this IS the root)'
+          tags:
+            - tag: component
+              value: stp
+            - tag: scope
+              value: network
+            - tag: layer
+              value: L2
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: gauge
+            - tag: mib
+              value: BRIDGE-MIB
+
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60032
+          name: 'STP root cost'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.17.2.6.0'
+          key: stp.root.cost
+          delay: 5m
+          history: 7d
+          trends: 365d
+          description: 'dot1dStpRootCost - cost of path to root bridge'
+          tags:
+            - tag: component
+              value: stp
+            - tag: scope
+              value: network
+            - tag: layer
+              value: L2
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: gauge
+            - tag: mib
+              value: BRIDGE-MIB
+
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60033
+          name: 'STP topology change count'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.17.2.4.0'
+          key: stp.topology.changes
+          delay: 5m
+          history: 7d
+          trends: 365d
+          description: 'dot1dStpTopChanges - total STP topology change notifications since boot'
+          tags:
+            - tag: component
+              value: stp
+            - tag: scope
+              value: network
+            - tag: layer
+              value: L2
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: counter
+            - tag: mib
+              value: BRIDGE-MIB
+
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60034
+          name: 'STP last topology change'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.17.2.3.0'
+          key: stp.topology.last_change
+          delay: 5m
+          history: 7d
+          units: uptime
+          description: 'dot1dStpTimeSinceTopologyChange - time since last topology change (centiseconds, converted)'
+          preprocessing:
+            - type: MULTIPLIER
+              parameters:
+                - '0.01'
+          tags:
+            - tag: component
+              value: stp
+            - tag: scope
+              value: network
+            - tag: layer
+              value: L2
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: gauge
+            - tag: mib
+              value: BRIDGE-MIB
+
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60035
+          name: 'STP bridge priority'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.17.2.2.0'
+          key: stp.bridge.priority
+          delay: 1h
+          history: 7d
+          trends: 365d
+          description: 'dot1dStpPriority - this bridge STP priority (lower = more likely to become root)'
+          tags:
+            - tag: component
+              value: stp
+            - tag: scope
+              value: network
+            - tag: layer
+              value: L2
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: gauge
+            - tag: mib
+              value: BRIDGE-MIB
+
+        # ── MAC address table stats ───────────────────────────────────────────
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60040
+          name: 'MAC table size (learned entries)'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.17.4.1.0'
+          key: bridge.mac.learned
+          delay: 5m
+          history: 7d
+          trends: 365d
+          description: 'dot1dTpLearnedEntryDiscards - entries discarded due to table full; also used as table pressure indicator'
+          tags:
+            - tag: component
+              value: switching
+            - tag: scope
+              value: performance
+            - tag: layer
+              value: L2
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: gauge
+            - tag: mib
+              value: BRIDGE-MIB
+
+        # ── IP / routing basics (MIB-II) ──────────────────────────────────────
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60050
+          name: 'IP forwarding state'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.4.1.0'
+          key: ip.forwarding
+          delay: 1h
+          history: 7d
+          trends: '0'
+          description: 'ipForwarding - 1=forwarding, 2=not-forwarding'
+          tags:
+            - tag: component
+              value: ip
+            - tag: scope
+              value: network
+            - tag: layer
+              value: L3
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: gauge
+            - tag: mib
+              value: IP-MIB
+
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60051
+          name: 'IP datagrams received'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.4.3.0'
+          key: ip.in.receives
+          delay: 5m
+          history: 7d
+          trends: 365d
+          description: 'ipInReceives per second'
+          preprocessing:
+            - type: CHANGE_PER_SECOND
+              parameters: []
+          tags:
+            - tag: component
+              value: ip
+            - tag: scope
+              value: performance
+            - tag: layer
+              value: L3
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: rate
+            - tag: mib
+              value: IP-MIB
+            - tag: counter_type
+              value: derived
+
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60052
+          name: 'IP datagrams forwarded'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.4.6.0'
+          key: ip.in.forwarded
+          delay: 5m
+          history: 7d
+          trends: 365d
+          description: 'ipForwDatagrams per second'
+          preprocessing:
+            - type: CHANGE_PER_SECOND
+              parameters: []
+          tags:
+            - tag: component
+              value: ip
+            - tag: scope
+              value: performance
+            - tag: layer
+              value: L3
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: rate
+            - tag: mib
+              value: IP-MIB
+            - tag: counter_type
+              value: derived
+
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60053
+          name: 'IP datagrams discarded (no route)'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.4.12.0'
+          key: ip.out.noroutes
+          delay: 5m
+          history: 7d
+          trends: 365d
+          description: 'ipOutNoRoutes per second'
+          preprocessing:
+            - type: CHANGE_PER_SECOND
+              parameters: []
+          tags:
+            - tag: component
+              value: ip
+            - tag: scope
+              value: performance
+            - tag: layer
+              value: L3
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: rate
+            - tag: mib
+              value: IP-MIB
+            - tag: counter_type
+              value: derived
+
+        - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60054
+          name: 'IP receive errors'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.2.1.4.5.0'
+          key: ip.in.hdr.errors
+          delay: 5m
+          history: 7d
+          trends: 365d
+          description: 'ipInHdrErrors + ipInAddrErrors per second'
+          preprocessing:
+            - type: CHANGE_PER_SECOND
+              parameters: []
+          tags:
+            - tag: component
+              value: ip
+            - tag: scope
+              value: performance
+            - tag: layer
+              value: L3
+            - tag: protocol
+              value: SNMP
+            - tag: metric_type
+              value: rate
+            - tag: mib
+              value: IP-MIB
+            - tag: counter_type
+              value: derived
+
+      # ── LLD: Interface discovery ──────────────────────────────────────────────
+      discovery_rules:
+        - uuid: aa41fb35e1194effa0bc540d16f97425
+          name: 'Network interface discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.2.1.2.2.1,1.3.6.1.2.1.31.1.1.1]'
+          key: net.if.discovery
+          delay: 1h
+          lifetime: 7d
+          description: 'Discovers all ethernetCsmacd (type 6) interfaces via ifTable + ifXTable walk'
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - '{#IFNAME}'
+                - '1.3.6.1.2.1.2.2.1.2'
+                - '0'
+                - '{#IFTYPE}'
+                - '1.3.6.1.2.1.2.2.1.3'
+                - '0'
+                - '{#IFALIAS}'
+                - '1.3.6.1.2.1.31.1.1.1.18'
+                - '0'
+                - '{#IFSPEED}'
+                - '1.3.6.1.2.1.31.1.1.1.15'
+                - '0'
+          filter:
+            evaltype: AND
+            conditions:
+              - macro: '{#IFTYPE}'
+                value: '^6$'
+                formulaid: A
+
+          item_prototypes:
+            # Status
+            - uuid: a65b9c5ab5ed4ef9ac469f4f970a6c21
+              name: 'Port {#IFNAME}: Admin status'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.7.{#SNMPINDEX}'
+              key: 'net.if.admin_status[{#SNMPINDEX}]'
+              delay: 3m
+              history: 7d
+              trends: 365d
+              valuemap:
+                name: 'IF-MIB::ifAdminStatus'
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: availability
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: gauge
+                - tag: mib
+                  value: IF-MIB
+                - tag: traffic_type
+                  value: status
+
+            - uuid: 59e9b19b542b457fb5328f592e7b39af
+              name: 'Port {#IFNAME}: Operational status'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.8.{#SNMPINDEX}'
+              key: 'net.if.oper_status[{#SNMPINDEX}]'
+              delay: 1m
+              history: 7d
+              trends: 365d
+              valuemap:
+                name: 'IF-MIB::ifOperStatus'
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: availability
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: gauge
+                - tag: mib
+                  value: IF-MIB
+                - tag: traffic_type
+                  value: status
+
+            # Traffic
+            - uuid: 27b221b50c204c4392cf6d18dc2a12ab
+              name: 'Port {#IFNAME}: Inbound traffic'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.31.1.1.1.6.{#SNMPINDEX}'
+              key: 'net.if.in[{#SNMPINDEX}]'
+              delay: 10s
+              history: 7d
+              trends: 365d
+              units: bps
+              description: 'ifHCInOctets - 64-bit high-capacity inbound octet counter, converted to bps'
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters: []
+                - type: MULTIPLIER
+                  parameters:
+                    - '8'
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: performance
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: direction
+                  value: inbound
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: rate
+                - tag: mib
+                  value: IF-MIB
+                - tag: counter_type
+                  value: 64bit
+                - tag: traffic_type
+                  value: data
+                - tag: unit
+                  value: bps
+
+            - uuid: 081fd81f9d90488cb3038ca9ae2d7326
+              name: 'Port {#IFNAME}: Outbound traffic'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.31.1.1.1.10.{#SNMPINDEX}'
+              key: 'net.if.out[{#SNMPINDEX}]'
+              delay: 10s
+              history: 7d
+              trends: 365d
+              units: bps
+              description: 'ifHCOutOctets - 64-bit high-capacity outbound octet counter, converted to bps'
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters: []
+                - type: MULTIPLIER
+                  parameters:
+                    - '8'
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: performance
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: direction
+                  value: outbound
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: rate
+                - tag: mib
+                  value: IF-MIB
+                - tag: counter_type
+                  value: 64bit
+                - tag: traffic_type
+                  value: data
+                - tag: unit
+                  value: bps
+
+            - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60060
+              name: 'Port {#IFNAME}: Inbound unicast packets'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.31.1.1.1.7.{#SNMPINDEX}'
+              key: 'net.if.in.ucast[{#SNMPINDEX}]'
+              delay: 1m
+              history: 7d
+              trends: 365d
+              units: pps
+              description: 'ifHCInUcastPkts per second'
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters: []
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: performance
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: direction
+                  value: inbound
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: rate
+                - tag: mib
+                  value: IF-MIB
+                - tag: counter_type
+                  value: 64bit
+                - tag: traffic_type
+                  value: unicast
+                - tag: unit
+                  value: pps
+
+            - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60061
+              name: 'Port {#IFNAME}: Outbound unicast packets'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.31.1.1.1.11.{#SNMPINDEX}'
+              key: 'net.if.out.ucast[{#SNMPINDEX}]'
+              delay: 1m
+              history: 7d
+              trends: 365d
+              units: pps
+              description: 'ifHCOutUcastPkts per second'
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters: []
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: performance
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: direction
+                  value: outbound
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: rate
+                - tag: mib
+                  value: IF-MIB
+                - tag: counter_type
+                  value: 64bit
+                - tag: traffic_type
+                  value: unicast
+                - tag: unit
+                  value: pps
+
+            - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60062
+              name: 'Port {#IFNAME}: Inbound multicast packets'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.31.1.1.1.8.{#SNMPINDEX}'
+              key: 'net.if.in.mcast[{#SNMPINDEX}]'
+              delay: 3m
+              history: 7d
+              trends: 365d
+              units: pps
+              description: 'ifHCInMulticastPkts per second'
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters: []
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: performance
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: direction
+                  value: inbound
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: rate
+                - tag: mib
+                  value: IF-MIB
+                - tag: counter_type
+                  value: 64bit
+                - tag: traffic_type
+                  value: multicast
+                - tag: unit
+                  value: pps
+
+            - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60063
+              name: 'Port {#IFNAME}: Outbound multicast packets'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.31.1.1.1.12.{#SNMPINDEX}'
+              key: 'net.if.out.mcast[{#SNMPINDEX}]'
+              delay: 3m
+              history: 7d
+              trends: 365d
+              units: pps
+              description: 'ifHCOutMulticastPkts per second'
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters: []
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: performance
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: direction
+                  value: outbound
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: rate
+                - tag: mib
+                  value: IF-MIB
+                - tag: counter_type
+                  value: 64bit
+                - tag: traffic_type
+                  value: multicast
+                - tag: unit
+                  value: pps
+
+            - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60064
+              name: 'Port {#IFNAME}: Inbound broadcast packets'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.31.1.1.1.9.{#SNMPINDEX}'
+              key: 'net.if.in.bcast[{#SNMPINDEX}]'
+              delay: 3m
+              history: 7d
+              trends: 365d
+              units: pps
+              description: 'ifHCInBroadcastPkts per second'
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters: []
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: performance
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: direction
+                  value: inbound
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: rate
+                - tag: mib
+                  value: IF-MIB
+                - tag: counter_type
+                  value: 64bit
+                - tag: traffic_type
+                  value: broadcast
+                - tag: unit
+                  value: pps
+
+            - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60065
+              name: 'Port {#IFNAME}: Outbound broadcast packets'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.31.1.1.1.13.{#SNMPINDEX}'
+              key: 'net.if.out.bcast[{#SNMPINDEX}]'
+              delay: 3m
+              history: 7d
+              trends: 365d
+              units: pps
+              description: 'ifHCOutBroadcastPkts per second'
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters: []
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: performance
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: direction
+                  value: outbound
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: rate
+                - tag: mib
+                  value: IF-MIB
+                - tag: counter_type
+                  value: 64bit
+                - tag: traffic_type
+                  value: broadcast
+                - tag: unit
+                  value: pps
+
+            # Utilization
+            - uuid: 59721438f94b4187838a4090df6e2b0f
+              name: 'Port {#IFNAME}: Inbound utilization'
+              type: CALCULATED
+              key: 'net.if.in.util[{#SNMPINDEX}]'
+              delay: 1m
+              history: 7d
+              trends: 365d
+              units: '%'
+              params: '100*last(//net.if.in[{#SNMPINDEX}])/((last(//net.if.speed[{#SNMPINDEX}])*1000000)+0.001)'
+              description: 'Inbound bandwidth utilization as % of port speed (0 when port speed unknown)'
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: performance
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: direction
+                  value: inbound
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: calculated
+                - tag: metric_type
+                  value: gauge
+                - tag: traffic_type
+                  value: data
+                - tag: unit
+                  value: percent
+
+            - uuid: ac4f5ba6bd2d4e1d8a06e288bb0e6c0c
+              name: 'Port {#IFNAME}: Outbound utilization'
+              type: CALCULATED
+              key: 'net.if.out.util[{#SNMPINDEX}]'
+              delay: 1m
+              history: 7d
+              trends: 365d
+              units: '%'
+              params: '100*last(//net.if.out[{#SNMPINDEX}])/((last(//net.if.speed[{#SNMPINDEX}])*1000000)+0.001)'
+              description: 'Outbound bandwidth utilization as % of port speed (0 when port speed unknown)'
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: performance
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: direction
+                  value: outbound
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: calculated
+                - tag: metric_type
+                  value: gauge
+                - tag: traffic_type
+                  value: data
+                - tag: unit
+                  value: percent
+
+            # Errors & discards
+            - uuid: 1bae72b1c55544ffa6ccab7d05ccb4b3
+              name: 'Port {#IFNAME}: Inbound errors'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.14.{#SNMPINDEX}'
+              key: 'net.if.in.errors[{#SNMPINDEX}]'
+              delay: 3m
+              history: 7d
+              trends: 365d
+              units: eps
+              description: 'ifInErrors per second'
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters: []
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: errors
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: direction
+                  value: inbound
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: rate
+                - tag: mib
+                  value: IF-MIB
+                - tag: counter_type
+                  value: 32bit
+
+            - uuid: 38749f45d56b439890ff8ecfee847cbf
+              name: 'Port {#IFNAME}: Outbound errors'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.20.{#SNMPINDEX}'
+              key: 'net.if.out.errors[{#SNMPINDEX}]'
+              delay: 3m
+              history: 7d
+              trends: 365d
+              units: eps
+              description: 'ifOutErrors per second'
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters: []
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: errors
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: direction
+                  value: outbound
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: rate
+                - tag: mib
+                  value: IF-MIB
+                - tag: counter_type
+                  value: 32bit
+
+            - uuid: aeef8a9c242b400babdc1cf85e5712a1
+              name: 'Port {#IFNAME}: Inbound discards'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.13.{#SNMPINDEX}'
+              key: 'net.if.in.discards[{#SNMPINDEX}]'
+              delay: 3m
+              history: 7d
+              trends: 365d
+              units: eps
+              description: 'ifInDiscards per second - inbound packets dropped (buffer overflow, QoS etc)'
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters: []
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: errors
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: direction
+                  value: inbound
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: rate
+                - tag: mib
+                  value: IF-MIB
+                - tag: counter_type
+                  value: 32bit
+                - tag: traffic_type
+                  value: discards
+
+            - uuid: 18710615f6744743b7062e3cca73b812
+              name: 'Port {#IFNAME}: Outbound discards'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.19.{#SNMPINDEX}'
+              key: 'net.if.out.discards[{#SNMPINDEX}]'
+              delay: 3m
+              history: 7d
+              trends: 365d
+              units: eps
+              description: 'ifOutDiscards per second - outbound packets dropped'
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters: []
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: errors
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: direction
+                  value: outbound
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: rate
+                - tag: mib
+                  value: IF-MIB
+                - tag: counter_type
+                  value: 32bit
+                - tag: traffic_type
+                  value: discards
+
+            - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60066
+              name: 'Port {#IFNAME}: Unknown protocol drops'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.15.{#SNMPINDEX}'
+              key: 'net.if.in.unknownprotos[{#SNMPINDEX}]'
+              delay: 5m
+              history: 7d
+              trends: 365d
+              units: eps
+              description: 'ifInUnknownProtos per second - frames dropped due to unknown/unsupported protocol'
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters: []
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: errors
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: direction
+                  value: inbound
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: rate
+                - tag: mib
+                  value: IF-MIB
+                - tag: counter_type
+                  value: 32bit
+
+            # Interface metadata
+            - uuid: 02a3bca419784ac1b9b92aa2028f8b4a
+              name: 'Port {#IFNAME}: Speed'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.31.1.1.1.15.{#SNMPINDEX}'
+              key: 'net.if.speed[{#SNMPINDEX}]'
+              delay: 5m
+              history: 7d
+              trends: 365d
+              units: Mbps
+              description: 'ifHighSpeed - interface speed in Mbps (0 = unknown/not connected)'
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: inventory
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: gauge
+                - tag: mib
+                  value: IF-MIB
+                - tag: traffic_type
+                  value: status
+                - tag: unit
+                  value: mbps
+
+            - uuid: 3118e9ab7f3c4f18b3e66f3e778f3135
+              name: 'Port {#IFNAME}: Alias'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.31.1.1.1.18.{#SNMPINDEX}'
+              key: 'net.if.alias[{#SNMPINDEX}]'
+              delay: 1h
+              history: 7d
+              trends: '0'
+              value_type: CHAR
+              description: 'ifAlias - user-defined port description/label'
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: inventory
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: text
+                - tag: mib
+                  value: IF-MIB
+                - tag: traffic_type
+                  value: status
+
+            - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60004
+              name: 'Port {#IFNAME}: MAC address'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.6.{#SNMPINDEX}'
+              key: 'net.if.mac[{#SNMPINDEX}]'
+              delay: 1h
+              history: 7d
+              trends: '0'
+              value_type: CHAR
+              description: 'ifPhysAddress - hardware MAC address of this port'
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: inventory
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: text
+                - tag: mib
+                  value: IF-MIB
+                - tag: traffic_type
+                  value: status
+
+            - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60067
+              name: 'Port {#IFNAME}: MTU'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.4.{#SNMPINDEX}'
+              key: 'net.if.mtu[{#SNMPINDEX}]'
+              delay: 1h
+              history: 7d
+              trends: 365d
+              units: B
+              description: 'ifMtu - maximum transmission unit size for this interface'
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: inventory
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: gauge
+                - tag: mib
+                  value: IF-MIB
+                - tag: traffic_type
+                  value: status
+                - tag: unit
+                  value: bytes
+
+            - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60068
+              name: 'Port {#IFNAME}: Last change'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.9.{#SNMPINDEX}'
+              key: 'net.if.lastchange[{#SNMPINDEX}]'
+              delay: 5m
+              history: 7d
+              units: uptime
+              description: 'ifLastChange - sysUpTime when this interface last changed state (centiseconds, converted)'
+              preprocessing:
+                - type: MULTIPLIER
+                  parameters:
+                    - '0.01'
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: availability
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: gauge
+                - tag: mib
+                  value: IF-MIB
+                - tag: traffic_type
+                  value: status
+
+            # STP per-port
+            - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60069
+              name: 'Port {#IFNAME}: STP state'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.17.2.15.1.3.{#SNMPINDEX}'
+              key: 'net.if.stp.state[{#SNMPINDEX}]'
+              delay: 1m
+              history: 7d
+              trends: 365d
+              valuemap:
+                name: 'BRIDGE-MIB::dot1dStpPortState'
+              description: 'dot1dStpPortState - STP state of this port (forwarding/blocking/learning etc)'
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: network
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: gauge
+                - tag: mib
+                  value: BRIDGE-MIB
+                - tag: traffic_type
+                  value: stp
+
+            - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60070
+              name: 'Port {#IFNAME}: STP designated cost'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.17.2.15.1.5.{#SNMPINDEX}'
+              key: 'net.if.stp.cost[{#SNMPINDEX}]'
+              delay: 5m
+              history: 7d
+              trends: 365d
+              description: 'dot1dStpPortPathCost - STP path cost configured on this port'
+              tags:
+                - tag: component
+                  value: interface
+                - tag: scope
+                  value: network
+                - tag: interface
+                  value: '{#IFNAME}'
+                - tag: layer
+                  value: L2
+                - tag: protocol
+                  value: SNMP
+                - tag: metric_type
+                  value: gauge
+                - tag: mib
+                  value: BRIDGE-MIB
+                - tag: traffic_type
+                  value: stp
+
+          trigger_prototypes:
+            - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60080
+              expression: 'last(/ZyXEL GS1900-48/net.if.oper_status[{#SNMPINDEX}])=2 and last(/ZyXEL GS1900-48/net.if.admin_status[{#SNMPINDEX}])=1'
+              name: 'Port {#IFNAME}: Link down (admin up)'
+              priority: WARNING
+              description: 'Port is administratively enabled but operationally down'
+              tags:
+                - tag: scope
+                  value: availability
+
+            - uuid: 99f0e6581f1847f4a3044e65be498ea0
+              expression: 'avg(/ZyXEL GS1900-48/net.if.in.errors[{#SNMPINDEX}],5m)>{$IF_ERRORS_WARN} or avg(/ZyXEL GS1900-48/net.if.out.errors[{#SNMPINDEX}],5m)>{$IF_ERRORS_WARN}'
+              name: 'Port {#IFNAME}: High error rate'
+              priority: WARNING
+              tags:
+                - tag: scope
+                  value: performance
+
+            - uuid: 40cdf96c5a8d4c0e9a44f82769b2320c
+              expression: 'avg(/ZyXEL GS1900-48/net.if.in.util[{#SNMPINDEX}],15m)>{$IF_UTIL_MAX} or avg(/ZyXEL GS1900-48/net.if.out.util[{#SNMPINDEX}],15m)>{$IF_UTIL_MAX}'
+              name: 'Port {#IFNAME}: High bandwidth utilization (>{$IF_UTIL_MAX}%)'
+              priority: WARNING
+              tags:
+                - tag: scope
+                  value: performance
+
+            - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60081
+              expression: 'last(/ZyXEL GS1900-48/net.if.stp.state[{#SNMPINDEX}])=2'
+              name: 'Port {#IFNAME}: STP blocking'
+              priority: INFO
+              description: 'Port is in STP blocking state - loop prevention active'
+              tags:
+                - tag: scope
+                  value: network
+
+          graph_prototypes:
+            - uuid: 3cf4848b47fe49e785f08552002ae483
+              name: 'Port {#IFNAME}: Traffic (bps)'
+              graph_items:
+                - sortorder: '0'
+                  drawtype: GRADIENT_LINE
+                  color: 1A7C11
+                  item:
+                    host: 'ZyXEL GS1900-48'
+                    key: 'net.if.in[{#SNMPINDEX}]'
+                - sortorder: '1'
+                  drawtype: GRADIENT_LINE
+                  color: 2774A4
+                  item:
+                    host: 'ZyXEL GS1900-48'
+                    key: 'net.if.out[{#SNMPINDEX}]'
+
+            - uuid: f7ea2c7a0465412b87754c647f8444a4
+              name: 'Port {#IFNAME}: Bandwidth utilization (%)'
+              graph_items:
+                - sortorder: '0'
+                  drawtype: GRADIENT_LINE
+                  color: F63100
+                  item:
+                    host: 'ZyXEL GS1900-48'
+                    key: 'net.if.in.util[{#SNMPINDEX}]'
+                - sortorder: '1'
+                  drawtype: GRADIENT_LINE
+                  color: 0040FF
+                  item:
+                    host: 'ZyXEL GS1900-48'
+                    key: 'net.if.out.util[{#SNMPINDEX}]'
+
+            - uuid: 411c3045391d404d8d358883e4b5a33f
+              name: 'Port {#IFNAME}: Errors and Discards'
+              graph_items:
+                - sortorder: '0'
+                  color: EE0000
+                  item:
+                    host: 'ZyXEL GS1900-48'
+                    key: 'net.if.in.errors[{#SNMPINDEX}]'
+                - sortorder: '1'
+                  color: EE0070
+                  item:
+                    host: 'ZyXEL GS1900-48'
+                    key: 'net.if.out.errors[{#SNMPINDEX}]'
+                - sortorder: '2'
+                  color: FF8C00
+                  item:
+                    host: 'ZyXEL GS1900-48'
+                    key: 'net.if.in.discards[{#SNMPINDEX}]'
+                - sortorder: '3'
+                  color: FFAA00
+                  item:
+                    host: 'ZyXEL GS1900-48'
+                    key: 'net.if.out.discards[{#SNMPINDEX}]'
+
+            - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60090
+              name: 'Port {#IFNAME}: Packet rates (pps)'
+              graph_items:
+                - sortorder: '0'
+                  drawtype: GRADIENT_LINE
+                  color: 1A7C11
+                  item:
+                    host: 'ZyXEL GS1900-48'
+                    key: 'net.if.in.ucast[{#SNMPINDEX}]'
+                - sortorder: '1'
+                  drawtype: GRADIENT_LINE
+                  color: 2774A4
+                  item:
+                    host: 'ZyXEL GS1900-48'
+                    key: 'net.if.out.ucast[{#SNMPINDEX}]'
+                - sortorder: '2'
+                  color: FF8C00
+                  item:
+                    host: 'ZyXEL GS1900-48'
+                    key: 'net.if.in.mcast[{#SNMPINDEX}]'
+                - sortorder: '3'
+                  color: FFAA00
+                  item:
+                    host: 'ZyXEL GS1900-48'
+                    key: 'net.if.out.mcast[{#SNMPINDEX}]'
+
+  triggers:
+    - uuid: ecceb2c873db492fbe91300bbba2b2b5
+      expression: 'max(/ZyXEL GS1900-48/icmpping,#5)=0'
+      name: 'Switch unreachable'
+      priority: DISASTER
+      description: 'No ICMP response for 5 consecutive checks'
+      tags:
+        - tag: scope
+          value: availability
+
+    - uuid: 4e3a686800064e889830062104488ba3
+      expression: 'min(/ZyXEL GS1900-48/icmppingloss,5m)>{$PING_LOSS_WARN}'
+      name: 'High ICMP packet loss'
+      priority: WARNING
+      tags:
+        - tag: scope
+          value: availability
+
+    - uuid: f13bb3c65237443cbec8fc3f47e5edbb
+      expression: 'last(/ZyXEL GS1900-48/system.uptime)<600'
+      name: 'Switch rebooted (uptime < 10 min)'
+      priority: WARNING
+      description: 'Uptime reset - power cycle, crash, or firmware update'
+      tags:
+        - tag: scope
+          value: availability
+
+    - uuid: 5768a5f9e8634ac99af179b13676c847
+      expression: 'avg(/ZyXEL GS1900-48/system.cpu.util,5m)>{$CPU_UTIL_MAX}'
+      name: 'High CPU utilization (>{$CPU_UTIL_MAX}%)'
+      priority: WARNING
+      tags:
+        - tag: scope
+          value: performance
+
+    - uuid: 877a967d9f094bada19c397bdac241b4
+      expression: 'avg(/ZyXEL GS1900-48/system.memory.avail,5m)<{$MEM_AVAIL_MIN}'
+      name: 'Low available memory (<{$MEM_AVAIL_MIN}% free)'
+      priority: WARNING
+      tags:
+        - tag: scope
+          value: performance
+
+    - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60102
+      expression: 'change(/ZyXEL GS1900-48/system.hw.firmware)<>0'
+      name: 'Firmware version changed'
+      priority: INFO
+      description: 'Firmware version has changed since last check'
+      tags:
+        - tag: scope
+          value: inventory
+
+    - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60103
+      expression: 'change(/ZyXEL GS1900-48/stp.topology.changes)>0'
+      name: 'STP topology change detected'
+      priority: WARNING
+      description: 'STP topology change count has increased - possible loop or link flap'
+      tags:
+        - tag: scope
+          value: network
+
+    - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60104
+      expression: 'change(/ZyXEL GS1900-48/stp.root.id)<>0'
+      name: 'STP root bridge changed'
+      priority: WARNING
+      description: 'The STP root bridge ID has changed - indicates major topology event'
+      tags:
+        - tag: scope
+          value: network
+
+  graphs:
+    - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60110
+      name: 'CPU utilization'
+      graph_items:
+        - sortorder: '0'
+          drawtype: GRADIENT_LINE
+          color: F63100
+          item:
+            host: 'ZyXEL GS1900-48'
+            key: system.cpu.util
+        - sortorder: '1'
+          drawtype: BOLD_LINE
+          color: FF8C00
+          item:
+            host: 'ZyXEL GS1900-48'
+            key: system.cpu.util1
+        - sortorder: '2'
+          drawtype: BOLD_LINE
+          color: FFAA00
+          item:
+            host: 'ZyXEL GS1900-48'
+            key: system.cpu.util5
+
+    - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60111
+      name: 'Memory'
+      graph_items:
+        - sortorder: '0'
+          drawtype: GRADIENT_LINE
+          color: 2774A4
+          item:
+            host: 'ZyXEL GS1900-48'
+            key: system.memory.util
+        - sortorder: '1'
+          drawtype: BOLD_LINE
+          color: 1A7C11
+          item:
+            host: 'ZyXEL GS1900-48'
+            key: system.memory.avail
+    - uuid: a3f1d2e4b5c64789a1b2c3d4e5f60113
+      name: 'ICMP availability'
+      graph_items:
+        - sortorder: '0'
+          drawtype: GRADIENT_LINE
+          color: 1A7C11
+          item:
+            host: 'ZyXEL GS1900-48'
+            key: icmppingsec
+        - sortorder: '1'
+          drawtype: BOLD_LINE
+          color: F63100
+          item:
+            host: 'ZyXEL GS1900-48'
+            key: icmppingloss
