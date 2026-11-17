@@ -5,12 +5,19 @@ program: it scans a directory, then shows the tree sorted by size, the file type
 cushion treemap. It only reads, and it talks to nothing: no ads, no promotions, no update
 checks, no telemetry.
 
+## Install it
+
+```bash
+packaging/install.sh
+```
+
+That builds both programs, installs them in `~/.local/bin` and adds two entries to the app
+launcher (HyprToys, rofi, any desktop menu): **diskmap**, the window, and **diskmap
+(terminal)**, the terminal program on the home folder.
+
 ## Run it
 
 ```bash
-cargo build --release
-install -m 755 target/release/diskmap target/release/diskmap-gui ~/.local/bin/
-
 diskmap-gui             # the window: choose a disk or a folder
 diskmap-gui ~/Videos    # the window, scanning a folder at once
 diskmap                 # the terminal program, on the current directory

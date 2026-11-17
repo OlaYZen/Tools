@@ -51,8 +51,13 @@
 11. **Colours are by file type.** The extensions taking the most space get a colour each from
    a fixed palette, the rest are grey; the extension list on the right is the legend.
 12. **Patch notes are compiled in** and shown with `c`, the house rule for every project.
-13. **No configuration file, no systemd unit.** It is a program run by hand, with no state
-    between runs; `packaging/` holds only a desktop entry that opens it in a terminal.
+13. **No configuration file, no systemd unit.** Both are programs run by hand, with no state
+    between runs. `packaging/install.sh` builds and installs them for the user: the binaries in
+    `~/.local/bin`, an icon, and two launcher entries in `~/.local/share/applications`, the
+    window (`diskmap`) and the terminal program (`diskmap (terminal)`, `Terminal=true`, on the
+    home folder). **The entries name the binaries by absolute path**, written in at install
+    time: a launcher started by the compositor, such as HyprToys under Hyprland, inherits a
+    `PATH` without `~/.local/bin`.
 
 ## The terminal screen
 
