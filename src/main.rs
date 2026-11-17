@@ -2,6 +2,7 @@
 
 mod changelog;
 mod scan;
+mod treemap;
 
 const USAGE: &str = "\
 Usage: diskmap [OPTIONS] [PATH]
