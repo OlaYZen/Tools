@@ -6,9 +6,6 @@
 
 pub const SOURCE: &str = include_str!("../CHANGELOG.md");
 
-pub const GROUPS: [&str; 7] =
-    ["Added", "Changed", "Security", "Performance", "Stability", "Fixed", "Removed"];
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Release {
     pub version: String,
@@ -48,6 +45,9 @@ pub fn releases() -> Vec<Release> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const GROUPS: [&str; 7] =
+        ["Added", "Changed", "Security", "Performance", "Stability", "Fixed", "Removed"];
 
     fn version_key(v: &str) -> Option<(u32, u32, u32)> {
         let mut it = v.split('.').map(|p| p.parse::<u32>().ok());
