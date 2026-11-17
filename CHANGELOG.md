@@ -11,6 +11,18 @@ crash, hang, leak or lose data, Fixed something that gave a wrong answer. An `x.
 a short title line under its heading: that title is what the overlay uses as the headline of the
 whole series.
 
+## [0.2.0] - 2026-11-17
+
+A window, and a place in the launcher
+
+### Added
+- `diskmap-gui`, a window laid out like WinDirStat: the tree, the file types and the cushion treemap at full resolution.
+- Started without a folder, the window offers the disks with their size and free space.
+- Hovering the treemap names the file; a click selects it, a double click zooms there.
+- A right click on a file or folder zooms the treemap there, opens it in the file manager or copies its path.
+- Files and folders show the icons Dolphin gives them, from the desktop's icon theme, special folders included.
+- `packaging/install.sh` installs both programs with an icon and two launcher entries, one for the window and one for the terminal.
+
 ## [0.1.0] - 2026-11-17
 
 First release: see where the space went
