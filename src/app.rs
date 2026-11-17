@@ -13,8 +13,8 @@ use ratatui::crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, Ke
 use ratatui::layout::Rect;
 use ratatui::widgets::TableState;
 
-use crate::scan::{self, Kind, Measure, NONE, Options, Progress, Tree};
-use crate::treemap::Pixmap;
+use diskmap::scan::{self, Kind, Measure, NONE, Options, Progress, Tree};
+use diskmap::treemap::Pixmap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Focus {

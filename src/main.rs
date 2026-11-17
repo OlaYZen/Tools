@@ -1,9 +1,6 @@
 //! diskmap: a disk usage analyzer for the terminal.
 
 mod app;
-mod changelog;
-mod scan;
-mod treemap;
 mod ui;
 
 use std::path::PathBuf;
@@ -13,7 +10,7 @@ use ratatui::crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use ratatui::crossterm::execute;
 
 use crate::app::App;
-use crate::scan::Options;
+use diskmap::scan::Options;
 
 const USAGE: &str = "\
 Usage: diskmap [OPTIONS] [PATH]

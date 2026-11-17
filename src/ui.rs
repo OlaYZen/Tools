@@ -9,40 +9,13 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Cell, Clear, Paragraph, Row, Table, Wrap};
 
 use crate::app::{App, Focus, MapKey, Overlay};
-use crate::changelog;
-use crate::scan::{Kind, Measure, Tree};
-use crate::treemap::{self, Rgb};
+use diskmap::changelog;
+use diskmap::fmt::{count, size};
+use diskmap::scan::{Kind, Measure, NONE, Tree};
+use diskmap::treemap::{self, Rgb};
 
 const ACCENT: Color = Color::Rgb(110, 170, 255);
 const DIM: Color = Color::Rgb(130, 130, 130);
-
-/// `1023 B`, `4.2 KiB`, `412 GiB`: three significant figures at most.
-pub fn size(bytes: u64) -> String {
-    const UNITS: [&str; 7] = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"];
-    if bytes < 1024 {
-        return format!("{bytes} B");
-    }
-    let mut v = bytes as f64;
-    let mut u = 0;
-    while v >= 1024.0 && u < UNITS.len() - 1 {
-        v /= 1024.0;
-        u += 1;
-    }
-    if v >= 99.95 { format!("{v:.0} {}", UNITS[u]) } else { format!("{v:.1} {}", UNITS[u]) }
-}
-
-/// A count with thin groups: `2 431 017`.
-pub fn count(n: u64) -> String {
-    let s = n.to_string();
-    let mut out = String::new();
-    for (i, ch) in s.chars().enumerate() {
-        if i > 0 && (s.len() - i).is_multiple_of(3) {
-            out.push(' ');
-        }
-        out.push(ch);
-    }
-    out
-}
 
 /// A bar `width` cells long, filled to `frac` in eighths.
 fn bar(frac: f64, width: usize) -> String {
@@ -140,7 +113,7 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
     let wide = area.width >= 70;
     let rows: Vec<Row> = app.rows.iter().map(|&(id, depth)| {
         let n = tree.node(id);
-        let parent = if n.parent == crate::scan::NONE { n.size(m) } else { tree.node(n.parent).size(m) };
+        let parent = if n.parent == NONE { n.size(m) } else { tree.node(n.parent).size(m) };
         let share = pct(n.size(m), parent);
         let marker = match n.kind {
             Kind::Dir if n.children.is_empty() => "  ",
@@ -259,7 +232,7 @@ fn draw_map(f: &mut Frame, app: &mut App, area: Rect) {
 /// The rectangle to outline for `id`: its own, or its nearest ancestor's that was laid out.
 fn outline_rect(tree: &Tree, map: &treemap::Pixmap, id: u32) -> Option<(usize, usize, usize, usize)> {
     let mut cur = id;
-    while cur != crate::scan::NONE {
+    while cur != NONE {
         if let Some(&r) = map.rects.get(&cur) {
             return Some(r);
         }
@@ -356,21 +329,6 @@ fn draw_overlay(f: &mut Frame, app: &App, title: &str, text: Vec<Line<'static>>)
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn sizes_read_naturally() {
-        assert_eq!(size(0), "0 B");
-        assert_eq!(size(1023), "1023 B");
-        assert_eq!(size(1536), "1.5 KiB");
-        assert_eq!(size(412 * 1024 * 1024 * 1024), "412 GiB");
-    }
-
-    #[test]
-    fn counts_are_grouped() {
-        assert_eq!(count(7), "7");
-        assert_eq!(count(2_431_017), "2 431 017");
-        assert_eq!(count(100_000), "100 000");
-    }
 
     #[test]
     fn bars_fill_in_eighths() {
