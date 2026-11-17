@@ -2,6 +2,7 @@
 //! the number formatting and the compiled-in patch notes.
 
 pub mod changelog;
+pub mod disks;
 pub mod fmt;
 pub mod scan;
 pub mod treemap;

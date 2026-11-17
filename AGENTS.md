@@ -1,9 +1,10 @@
 # diskmap: how work is done here
 
-diskmap is a disk usage analyzer for the terminal, in the spirit of WinDirStat: it scans a
-directory, then shows the tree sorted by size, the file types and a cushion treemap. No ads,
-no network, no telemetry, ever. `DESIGN.md` is the manual: decisions first, change them there
-before the code.
+diskmap is a disk usage analyzer in the spirit of WinDirStat, as a terminal program
+(`diskmap`, `src/main.rs`) and a window (`diskmap-gui`, `src/bin/diskmap-gui.rs`) on one
+library (`src/lib.rs`): it scans a directory, then shows the tree sorted by size, the file
+types and a cushion treemap. No ads, no network, no telemetry, ever. `DESIGN.md` is the
+manual: decisions first, change them there before the code.
 
 It is developed on the desktop, `midgard` at `20.30`, in `~/projects/diskmap`. The archive's
 `Documentation/Projects.md` carries its entry, and its guide
@@ -15,7 +16,7 @@ It is developed on the desktop, `midgard` at `20.30`, in `~/projects/diskmap`. T
 cargo build                        # debug
 cargo test                         # unit tests, the changelog guard among them
 cargo clippy --all-targets         # stays clean
-cargo build --release && install -m 755 target/release/diskmap ~/.local/bin/diskmap
+cargo build --release && install -m 755 target/release/diskmap target/release/diskmap-gui ~/.local/bin/
 ```
 
 `cargo fmt` is not run: the code is formatted by hand to match what is around it. On a guest

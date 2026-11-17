@@ -1,16 +1,19 @@
 # diskmap
 
-A disk usage analyzer for the Linux terminal, in the spirit of WinDirStat: it scans a
-directory, then shows the tree sorted by size, the file types and a cushion treemap. It only
-reads, and it talks to nothing: no ads, no promotions, no update checks, no telemetry.
+A disk usage analyzer for Linux, in the spirit of WinDirStat, as a window and as a terminal
+program: it scans a directory, then shows the tree sorted by size, the file types and a
+cushion treemap. It only reads, and it talks to nothing: no ads, no promotions, no update
+checks, no telemetry.
 
 ## Run it
 
 ```bash
 cargo build --release
-install -m 755 target/release/diskmap ~/.local/bin/diskmap
+install -m 755 target/release/diskmap target/release/diskmap-gui ~/.local/bin/
 
-diskmap                 # the current directory
+diskmap-gui             # the window: choose a disk or a folder
+diskmap-gui ~/Videos    # the window, scanning a folder at once
+diskmap                 # the terminal program, on the current directory
 diskmap /               # the root filesystem, without crossing into other mounts
 diskmap -x /mnt         # crossing mount points
 ```
