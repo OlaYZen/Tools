@@ -7,6 +7,7 @@ description = "A disk usage analyzer for the terminal: a directory tree sorted b
 publish = false
 
 [dependencies]
+ratatui = "0.30.2"
 rayon = "1.12.0"
 
 [profile.release]
