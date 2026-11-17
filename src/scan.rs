@@ -109,7 +109,10 @@ struct Raw {
 
 struct Ctx<'a> {
     opts: Options,
-    dev: u64,
+    /// Mount points and the filesystem each one holds, from `/proc/self/mountinfo`.
+    mounts: HashMap<PathBuf, String>,
+    /// The filesystem the scanned root is on.
+    root_fs: Option<String>,
     seen: Mutex<HashSet<(u64, u64)>>,
     progress: &'a Progress,
 }
@@ -128,11 +131,62 @@ fn name_of(path: &Path) -> Box<str> {
         .unwrap_or_else(|| path.to_string_lossy().into_owned()).into_boxed_str()
 }
 
-fn entry(ctx: &Ctx, path: &Path, md: &fs::Metadata) -> Raw {
+/// Undoes mountinfo's octal escapes (`\040` for a space).
+fn unescape(s: &str) -> String {
+    let b = s.as_bytes();
+    let mut out = Vec::with_capacity(b.len());
+    let mut i = 0;
+    while i < b.len() {
+        if b[i] == b'\\' && i + 3 < b.len() && (b'0'..=b'3').contains(&b[i + 1]) && b[i + 1..i + 4].iter().all(|c| (b'0'..=b'7').contains(c)) {
+            out.push((b[i + 1] - b'0') * 64 + (b[i + 2] - b'0') * 8 + (b[i + 3] - b'0'));
+            i += 4;
+        } else {
+            out.push(b[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+/// Mount point to filesystem id (`major:minor`), from the text of `/proc/self/mountinfo`.
+///
+/// The id is the filesystem's, where `st_dev` is not: every btrfs subvolume reports its own
+/// `st_dev`, but all mounts of one btrfs filesystem share this id.
+fn parse_mountinfo(text: &str) -> HashMap<PathBuf, String> {
+    text.lines().filter_map(|l| {
+        let mut f = l.split(' ');
+        let id = f.nth(2)?;
+        let point = f.nth(1)?;
+        Some((PathBuf::from(unescape(point)), id.to_string()))
+    }).collect()
+}
+
+/// The filesystem `path` is on: that of the longest mount point above it.
+fn fs_of(mounts: &HashMap<PathBuf, String>, path: &Path) -> Option<String> {
+    mounts.iter().filter(|(p, _)| path.starts_with(p))
+        .max_by_key(|(p, _)| p.as_os_str().len()).map(|(_, id)| id.clone())
+}
+
+/// Whether a folder whose `st_dev` differs from its parent's is still on the scanned filesystem:
+/// a mount of the same filesystem (a btrfs subvolume mounted at `/home`) or a subvolume that
+/// is not mounted anywhere is; any other mount is not.
+fn same_fs(mounts: &HashMap<PathBuf, String>, root_fs: Option<&str>, path: &Path) -> bool {
+    if mounts.is_empty() {
+        return false;
+    }
+    match mounts.get(path) {
+        Some(id) => Some(id.as_str()) == root_fs,
+        None => true,
+    }
+}
+
+fn entry(ctx: &Ctx, path: &Path, md: &fs::Metadata, parent_dev: u64) -> Raw {
     let name = name_of(path);
     let ft = md.file_type();
     if ft.is_dir() {
-        if ctx.opts.cross_filesystems || md.dev() == ctx.dev {
+        if ctx.opts.cross_filesystems || md.dev() == parent_dev
+            || same_fs(&ctx.mounts, ctx.root_fs.as_deref(), path)
+        {
             return walk(ctx, path, name, md);
         }
         // Another filesystem: shown, but empty and not entered.
@@ -177,7 +231,7 @@ fn walk(ctx: &Ctx, path: &Path, name: Box<str>, md: &fs::Metadata) -> Raw {
         }
     };
     raw.children = paths.par_iter().filter_map(|p| match fs::symlink_metadata(p) {
-        Ok(md) => Some(entry(ctx, p, &md)),
+        Ok(child) => Some(entry(ctx, p, &child, md.dev())),
         Err(_) => {
             ctx.progress.errors.fetch_add(1, Ordering::Relaxed);
             None
@@ -194,11 +248,13 @@ fn walk(ctx: &Ctx, path: &Path, name: Box<str>, md: &fs::Metadata) -> Raw {
 /// Scans `root`, following it if it is itself a symbolic link, and nothing below.
 pub fn scan(root: &Path, opts: Options, progress: &Progress) -> std::io::Result<Tree> {
     let md = fs::metadata(root)?;
-    let ctx = Ctx { opts, dev: md.dev(), seen: Mutex::new(HashSet::new()), progress };
+    let mounts = fs::read_to_string("/proc/self/mountinfo").map(|t| parse_mountinfo(&t)).unwrap_or_default();
+    let root_fs = fs_of(&mounts, root);
+    let ctx = Ctx { opts, mounts, root_fs, seen: Mutex::new(HashSet::new()), progress };
     let raw = if md.is_dir() {
         walk(&ctx, root, root.to_string_lossy().into_owned().into_boxed_str(), &md)
     } else {
-        entry(&ctx, root, &md)
+        entry(&ctx, root, &md, md.dev())
     };
     let errors = progress.errors.load(Ordering::Relaxed);
     Ok(Tree::build(root.to_path_buf(), raw, errors))
@@ -401,6 +457,33 @@ mod tests {
         assert_eq!(t.path(id), d.path().join("small/notes.txt"));
         let anc = t.ancestors(id);
         assert_eq!(anc, vec![t.root(), find(&t, "small")]);
+    }
+
+    const MOUNTINFO: &str = "\
+26 1 0:37 /@ / rw,noatime shared:1 - btrfs /dev/nvme0n1p2 rw
+27 26 0:37 /@home /home rw,noatime shared:2 - btrfs /dev/nvme0n1p2 rw
+28 26 0:59 / /tmp rw shared:3 - tmpfs tmpfs rw
+29 26 0:202 / /mnt/Mother\\040load rw shared:4 - nfs4 192.168.1.3:/storage rw
+";
+
+    #[test]
+    fn mountinfo_is_read_with_its_escapes() {
+        let m = parse_mountinfo(MOUNTINFO);
+        assert_eq!(m.get(Path::new("/home")).map(String::as_str), Some("0:37"));
+        assert_eq!(m.get(Path::new("/mnt/Mother load")).map(String::as_str), Some("0:202"));
+        assert_eq!(fs_of(&m, Path::new("/home/olayzen")).as_deref(), Some("0:37"));
+        assert_eq!(fs_of(&m, Path::new("/tmp/x")).as_deref(), Some("0:59"));
+    }
+
+    #[test]
+    fn btrfs_subvolumes_stay_in_and_other_mounts_stay_out() {
+        let m = parse_mountinfo(MOUNTINFO);
+        let root = fs_of(&m, Path::new("/"));
+        assert!(same_fs(&m, root.as_deref(), Path::new("/home")));
+        assert!(same_fs(&m, root.as_deref(), Path::new("/var/lib/docker/btrfs/subvolumes/x")));
+        assert!(!same_fs(&m, root.as_deref(), Path::new("/tmp")));
+        assert!(!same_fs(&m, root.as_deref(), Path::new("/mnt/Mother load")));
+        assert!(!same_fs(&HashMap::new(), None, Path::new("/home")));
     }
 
     #[test]

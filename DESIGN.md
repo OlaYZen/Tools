@@ -14,7 +14,15 @@
    `(st_dev, st_ino)`. Directories are never followed through symbolic links; a link counts
    as its own small entry.
 6. **One filesystem by default.** The scan does not cross into other mounts (`/proc`, a NAS
-   share, a snapshot) unless `-x`/`--cross-filesystems` is given.
+   share, a USB disk, a container overlay) unless `-x`/`--cross-filesystems` is given. "Other"
+   is decided by the filesystem id in `/proc/self/mountinfo`, not by `st_dev`: on btrfs every
+   subvolume has its own `st_dev`, so `/home` on the same partition as `/` would otherwise be
+   left out. A folder whose `st_dev` changes is entered when it is a mount of the same
+   filesystem or not a mount point at all (an unmounted subvolume); without `/proc` the
+   `st_dev` rule is all there is.
+   On btrfs the total can exceed what `df` reports: `st_blocks` counts compressed files at
+   their uncompressed size and cannot see extents shared by reflinks and snapshots. `du`
+   counts the same way.
 7. **The scan runs in the background, in parallel** (`rayon`, one task per directory), and the
    screen shows its progress until it is done. A directory that cannot be read is counted in
    the status bar, not shown as an error dialog.
