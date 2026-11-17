@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=diskmap
+Comment=See what is using the disk: a size-sorted tree, file types and a treemap
+Exec=diskmap %f
+Terminal=true
+Icon=drive-harddisk
+Categories=System;Utility;Filesystem;

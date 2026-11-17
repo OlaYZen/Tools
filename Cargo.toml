@@ -1,0 +1,14 @@
+[package]
+name = "diskmap"
+version = "0.0.0"
+edition = "2024"
+license = "GPL-3.0-only"
+description = "A disk usage analyzer for the terminal: a directory tree sorted by size, the file types and a cushion treemap"
+publish = false
+
+[dependencies]
+
+[profile.release]
+strip = true
+lto = "thin"
+codegen-units = 4
