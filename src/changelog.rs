@@ -45,14 +45,14 @@ pub fn releases() -> Vec<Release> {
     parse(SOURCE)
 }
 
-fn version_key(v: &str) -> Option<(u32, u32, u32)> {
-    let mut it = v.split('.').map(|p| p.parse::<u32>().ok());
-    Some((it.next()??, it.next()??, it.next()??))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn version_key(v: &str) -> Option<(u32, u32, u32)> {
+        let mut it = v.split('.').map(|p| p.parse::<u32>().ok());
+        Some((it.next()??, it.next()??, it.next()??))
+    }
 
     #[test]
     fn newest_entry_is_the_crate_version() {
