@@ -7,8 +7,12 @@ description = "A disk usage analyzer for the terminal: a directory tree sorted b
 publish = false
 
 [dependencies]
+rayon = "1.12.0"
 
 [profile.release]
 strip = true
 lto = "thin"
 codegen-units = 4
+
+[dev-dependencies]
+tempfile = "3.27.0"

@@ -1,6 +1,7 @@
 //! diskmap: a disk usage analyzer for the terminal.
 
 mod changelog;
+mod scan;
 
 const USAGE: &str = "\
 Usage: diskmap [OPTIONS] [PATH]
