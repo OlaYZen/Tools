@@ -38,10 +38,20 @@
    screen's own resolution. In the terminal each cell is two pixels
    high (the `▀` half block, foreground the top pixel, background the bottom), which doubles
    the vertical resolution.
-10. **Colours are by file type.** The extensions taking the most space get a colour each from
+10. **The window shows Dolphin's icons.** Each file and folder gets the icon the desktop's
+    file manager would give it, from the same sources: the extension becomes a MIME type
+    through shared-mime-info's `globs2`, the MIME type an icon name (`application-pdf`, then
+    its `generic-icons` entry, then `application-x-generic`), and the icon comes from the
+    theme KDE is set to (`kdeglobals`), else GTK's, else breeze. On the dark window the
+    theme's `-dark` variant is used, as Plasma recolours it, and its 32 px set is preferred:
+    in Breeze that is the coloured one (blue folders), where 16 and 22 px are line art. Home,
+    Downloads, Videos and the other XDG folders get their own icons, read from
+    `user-dirs.dirs`. Files are not opened to sniff their type, so a file with no extension
+    shows as unknown where Dolphin might know better.
+11. **Colours are by file type.** The extensions taking the most space get a colour each from
    a fixed palette, the rest are grey; the extension list on the right is the legend.
-11. **Patch notes are compiled in** and shown with `c`, the house rule for every project.
-12. **No configuration file, no systemd unit.** It is a program run by hand, with no state
+12. **Patch notes are compiled in** and shown with `c`, the house rule for every project.
+13. **No configuration file, no systemd unit.** It is a program run by hand, with no state
     between runs; `packaging/` holds only a desktop entry that opens it in a terminal.
 
 ## The terminal screen

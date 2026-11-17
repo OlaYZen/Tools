@@ -1,8 +1,8 @@
 //! diskmap's window: the same scan and treemap as the terminal program, laid out like
 //! WinDirStat with the tree on the left, the file types on the right and the treemap below.
 
-use std::collections::HashSet;
-use std::path::PathBuf;
+use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -16,6 +16,7 @@ use egui_extras::{Column, TableBuilder};
 use diskmap::changelog;
 use diskmap::disks::{self, Disk};
 use diskmap::fmt::{count, size};
+use diskmap::icons::Icons;
 use diskmap::scan::{self, Kind, Measure, NONE, Options, Progress, Tree};
 use diskmap::treemap::{self, Pixmap};
 
@@ -59,8 +60,10 @@ fn main() -> std::process::ExitCode {
             .with_inner_size([1280.0, 820.0]).with_min_inner_size([640.0, 420.0]),
         ..Default::default()
     };
-    let result = eframe::run_native("diskmap", native, Box::new(move |_cc| {
-        let mut gui = Gui::new(opts);
+    let result = eframe::run_native("diskmap", native, Box::new(move |cc| {
+        egui_extras::install_image_loaders(&cc.egui_ctx);
+        let icons = Icons::load(cc.egui_ctx.global_style().visuals.dark_mode);
+        let mut gui = Gui::new(opts, icons);
         if let Some(p) = path {
             gui.start_scan(p);
         }
@@ -109,15 +112,20 @@ struct Gui {
     map: Option<(MapKey, Pixmap, TextureHandle)>,
     show_notes: bool,
     message: Option<String>,
+    icons: Icons,
+    /// Icon URIs by extension index, and for the folders Dolphin draws specially.
+    ext_icons: Vec<Option<String>>,
+    special_icons: HashMap<u32, String>,
 }
 
 impl Gui {
-    fn new(opts: Options) -> Gui {
+    fn new(opts: Options, icons: Icons) -> Gui {
         let home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("/"));
         Gui {
             opts, path_input: home.display().to_string(), disks: disks::list(), tree: None, scanning: None,
             scan_time: Duration::ZERO, failure: None, expanded: HashSet::new(), rows: Vec::new(), selected: None,
             scroll_to: None, zoom: 0, highlight: None, show_map: true, map: None, show_notes: false, message: None,
+            icons, ext_icons: Vec::new(), special_icons: HashMap::new(),
         }
     }
 
@@ -162,6 +170,7 @@ impl Gui {
                 self.highlight = None;
                 self.tree = Some(tree);
                 self.rebuild_rows();
+                self.refresh_icons();
             }
             Ok(Err(e)) => self.failure = Some(format!("Cannot scan {}: {e}", s.path.display())),
             Err(_) => self.failure = Some("The scan stopped unexpectedly.".into()),
@@ -179,6 +188,37 @@ impl Gui {
                     stack.push((c, depth + 1));
                 }
             }
+        }
+    }
+
+    /// Looks up the theme icon for every file type, and for the special folders in the tree.
+    /// Extension indices change when the types are re-sorted, so this runs again then.
+    fn refresh_icons(&mut self) {
+        let Some(tree) = &self.tree else { return };
+        self.ext_icons = tree.exts.iter().map(|e| self.icons.file(&e.name).map(uri)).collect();
+        self.special_icons.clear();
+        let mut special: Vec<PathBuf> = vec![PathBuf::from("/")];
+        if let Some(home) = std::env::var_os("HOME").map(PathBuf::from) {
+            special.push(home.clone());
+            if let Ok(entries) = std::fs::read_dir(&home) {
+                special.extend(entries.flatten().map(|e| e.path()));
+            }
+        }
+        for p in special {
+            let Some(id) = find(tree, &p) else { continue };
+            if let Some(icon) = self.icons.folder(&p).filter(|i| Some(*i) != self.icons.named("folder")) {
+                self.special_icons.insert(id, uri(icon));
+            }
+        }
+    }
+
+    fn icon_of(&self, tree: &Tree, id: u32) -> Option<String> {
+        let n = tree.node(id);
+        match n.kind {
+            Kind::Dir => self.special_icons.get(&id).cloned().or_else(|| self.icons.named("folder").map(uri)),
+            Kind::File => self.ext_icons.get(n.ext as usize).cloned().flatten(),
+            Kind::Link => self.icons.link().map(uri),
+            Kind::Other => self.icons.other().map(uri),
         }
     }
 
@@ -211,6 +251,7 @@ impl Gui {
         tree.sort(m);
         self.highlight = ext.and_then(|n| tree.exts.iter().position(|e| e.name == n)).map(|i| i as u32);
         self.rebuild_rows();
+        self.refresh_icons();
     }
 
     fn folder_of(&self, id: u32) -> Option<PathBuf> {
@@ -448,10 +489,7 @@ impl Gui {
                     } else {
                         ui.add_space(16.0);
                     }
-                    if n.kind == Kind::File {
-                        let c = treemap::ext_color(n.ext);
-                        ui.label(RichText::new("■").color(Color32::from_rgb(c[0], c[1], c[2])));
-                    }
+                    icon(ui, self.icon_of(tree, id).as_deref());
                     let text = match n.kind {
                         Kind::Dir => RichText::new(&*n.name).strong(),
                         Kind::File => RichText::new(&*n.name),
@@ -515,7 +553,7 @@ impl Gui {
         });
         TableBuilder::new(ui).id_salt("types").striped(true).sense(Sense::click())
             .column(Column::exact(16.0))
-            .column(Column::remainder().at_least(60.0).clip(true))
+            .column(Column::remainder().at_least(80.0).clip(true))
             .column(Column::exact(72.0))
             .column(Column::exact(56.0))
             .column(Column::exact(64.0))
@@ -533,11 +571,17 @@ impl Gui {
                     row.set_selected(self.highlight == Some(i as u32));
                     row.col(|ui| {
                         let c = treemap::ext_color(i as u32);
-                        ui.label(RichText::new("■").color(Color32::from_rgb(c[0], c[1], c[2])));
+                        let (r, _) = ui.allocate_exact_size(Vec2::splat(12.0), Sense::hover());
+                        ui.painter().rect_filled(r, CornerRadius::same(2), Color32::from_rgb(c[0], c[1], c[2]));
                     });
                     row.col(|ui| {
-                        let name = if e.name.is_empty() { "(none)".to_string() } else { format!(".{}", e.name) };
-                        ui.add(egui::Label::new(name).selectable(false).truncate());
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = 4.0;
+                            icon(ui, self.ext_icons.get(i).cloned().flatten().as_deref());
+                            let name = if e.name.is_empty() { "(none)".to_string() } else { format!(".{}", e.name) };
+                            ui.add(egui::Label::new(name).selectable(false).truncate())
+                                .on_hover_text(self.icons.mime(&e.name).unwrap_or("unknown type"));
+                        });
                     });
                     let share = if total == 0 { 0.0 } else { e.size(m) as f64 / total as f64 * 100.0 };
                     for text in [size(e.size(m)), format!("{share:.1} %"), count(e.files)] {
@@ -668,6 +712,31 @@ impl Gui {
         });
         self.show_notes = open;
     }
+}
+
+fn uri(p: &Path) -> String {
+    format!("file://{}", p.display())
+}
+
+/// A theme icon at the row's size, or the space one would take.
+fn icon(ui: &mut egui::Ui, uri: Option<&str>) {
+    match uri {
+        Some(u) => {
+            ui.add(egui::Image::new(u).fit_to_exact_size(Vec2::splat(16.0)));
+        }
+        None => ui.add_space(16.0),
+    }
+}
+
+/// The node at `path`, found by walking down from the scanned root.
+fn find(tree: &Tree, path: &Path) -> Option<u32> {
+    let rest = path.strip_prefix(&tree.root_path).ok()?;
+    let mut cur = tree.root();
+    for part in rest.components() {
+        let name = part.as_os_str().to_string_lossy();
+        cur = *tree.node(cur).children.iter().find(|&&c| *tree.node(c).name == *name)?;
+    }
+    Some(cur)
 }
 
 #[derive(Debug, Clone, Copy)]

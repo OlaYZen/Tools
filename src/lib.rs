@@ -4,5 +4,6 @@
 pub mod changelog;
 pub mod disks;
 pub mod fmt;
+pub mod icons;
 pub mod scan;
 pub mod treemap;
