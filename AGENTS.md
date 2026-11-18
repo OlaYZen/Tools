@@ -7,8 +7,8 @@ types and a cushion treemap. No ads, no network, no telemetry, ever. `DESIGN.md`
 manual: decisions first, change them there before the code.
 
 It is developed on the desktop, `midgard` at `20.30`, in `~/projects/diskmap`. The archive's
-`Documentation/Projects.md` carries its entry, and its guide
-`Documentation/Guides/New-Rust-Project.md` is where the house rules come from.
+`documentation/Projects.md` carries its entry, and its guide
+`documentation/Guides/New-Rust-Project.md` is where the house rules come from.
 
 ## Commands
 
