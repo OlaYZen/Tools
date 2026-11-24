@@ -1,0 +1,23 @@
+[package]
+name = "diskmap"
+version = "0.2.0"
+edition = "2024"
+license = "GPL-3.0-only"
+description = "A disk usage analyzer for the terminal: a directory tree sorted by size, the file types and a cushion treemap"
+publish = false
+
+[dependencies]
+eframe = "0.37.0"
+egui_extras = { version = "0.37.0", features = ["file", "svg", "image"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
+libc = "0.2"
+ratatui = "0.30.2"
+rayon = "1.12.0"
+
+[profile.release]
+strip = true
+lto = "thin"
+codegen-units = 4
+
+[dev-dependencies]
+tempfile = "3.27.0"

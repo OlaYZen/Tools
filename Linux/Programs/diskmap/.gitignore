@@ -1,0 +1,10 @@
+# Build output
+/target
+
+# Nothing a scan produces, and no per-machine files, enters the repository.
+*.json
+*.csv
+*.log
+.env
+*.pem
+*.key

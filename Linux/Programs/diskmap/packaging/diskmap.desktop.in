@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=diskmap
+GenericName=Disk Usage Analyzer
+Comment=See what is using the disk: a size-sorted tree, the file types and a treemap
+Exec=@BINDIR@/diskmap-gui %f
+TryExec=@BINDIR@/diskmap-gui
+Icon=diskmap
+Terminal=false
+StartupWMClass=diskmap
+Categories=System;Filesystem;
+Keywords=disk;usage;space;storage;treemap;windirstat;du;

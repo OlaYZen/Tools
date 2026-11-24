@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=diskmap (terminal)
+GenericName=Disk Usage Analyzer
+Comment=diskmap in the terminal: the same tree, file types and treemap, also over SSH
+Exec=@BINDIR@/diskmap @HOME@
+TryExec=@BINDIR@/diskmap
+Icon=diskmap
+Terminal=true
+Categories=System;Filesystem;ConsoleOnly;
+Keywords=disk;usage;space;storage;treemap;windirstat;du;tui;
