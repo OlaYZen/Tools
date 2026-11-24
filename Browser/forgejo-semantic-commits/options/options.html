@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font: 14px/1.5 system-ui, sans-serif; margin: 12px; min-width: 380px; }
+    h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: GrayText; margin: 16px 0 6px; }
+    .feature { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; }
+    .feature input { margin-top: 4px; }
+    .feature small { display: block; color: GrayText; }
+    .sub { margin-left: 24px; }
+    .sub.text { flex-direction: column; gap: 2px; font-size: 13px; }
+    .sub.text input, .sub.text select { width: 100%; box-sizing: border-box; }
+    label.block { display: block; margin: 12px 0 4px; font-weight: 600; }
+    .hint { font-weight: 400; color: GrayText; font-size: 12px; }
+    textarea { width: 100%; box-sizing: border-box; min-height: 56px; font-family: ui-monospace, monospace; }
+    .row { display: flex; gap: 8px; align-items: center; margin-top: 14px; }
+    #status { color: GrayText; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h2>Features</h2>
+  <div id="features"></div>
+
+  <h2>Sites</h2>
+  <label class="block" for="extraHosts">Always enable on these hosts
+    <div class="hint">Forgejo/Gitea is auto-detected. Add hostnames here if detection misses your instance. One per line.</div>
+  </label>
+  <textarea id="extraHosts" placeholder="git.example.com"></textarea>
+
+  <label class="block" for="disabledHosts">Never enable on these hosts
+    <div class="hint">One per line.</div>
+  </label>
+  <textarea id="disabledHosts"></textarea>
+
+  <div class="row">
+    <button id="save">Save</button>
+    <span id="status"></span>
+  </div>
+  <script src="../src/feature-list.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

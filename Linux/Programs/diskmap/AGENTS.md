@@ -6,7 +6,7 @@ library (`src/lib.rs`): it scans a directory, then shows the tree sorted by size
 types and a cushion treemap. No ads, no network, no telemetry, ever. `DESIGN.md` is the
 manual: decisions first, change them there before the code.
 
-It is developed on the desktop, `midgard` at `20.30`, in `~/projects/diskmap`. The archive's
+It is developed on the desktop, `midgard` at `20.30`, in `~/projects/Tools/Linux/Programs/diskmap`. The archive's
 `documentation/Projects.md` carries its entry, and its guide
 `documentation/Guides/New-Rust-Project.md` is where the house rules come from.
 

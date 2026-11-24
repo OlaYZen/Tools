@@ -1,0 +1,64 @@
+{
+  "manifest_version": 3,
+  "name": "Refined Forgejo",
+  "version": "0.8.3",
+  "description": "Quality-of-life improvements for Forgejo and Gitea, in the spirit of Refined GitHub.",
+  "icons": {
+    "48": "icons/icon.svg",
+    "96": "icons/icon.svg"
+  },
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["src/early-theme.js"],
+      "css": ["src/github-dark.css"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": [
+        "src/feature-list.js",
+        "src/core.js",
+        "src/features/github-dark.js",
+        "src/features/sticky-header.js",
+        "src/features/repo-home-layout.js",
+        "src/features/semantic-commits.js",
+        "src/features/co-authors.js",
+        "src/features/absolute-dates.js",
+        "src/features/time-colors.js",
+        "src/features/timeline-collapse.js",
+        "src/features/hide-bot-comments.js",
+        "src/features/fold-generated-files.js",
+        "src/features/pr-list-extras.js",
+        "src/features/keyboard-shortcuts.js",
+        "src/main.js"
+      ],
+      "css": [
+        "src/core.css",
+        "src/features/sticky-header.css",
+        "src/features/repo-home-layout.css",
+        "src/features/semantic-commits.css",
+        "src/features/co-authors.css",
+        "src/features/absolute-dates.css",
+        "src/features/time-colors.css",
+        "src/features/timeline-collapse.css",
+        "src/features/hide-bot-comments.css",
+        "src/features/fold-generated-files.css",
+        "src/features/pr-list-extras.css",
+        "src/features/keyboard-shortcuts.css"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": false
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "refined-forgejo@local",
+      "strict_min_version": "128.0"
+    }
+  }
+}

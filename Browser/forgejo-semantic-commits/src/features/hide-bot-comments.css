@@ -1,0 +1,14 @@
+.rf-bot-collapsed .comment-container > :not(.comment-header) {
+  display: none !important;
+}
+
+.rf-bot-collapsed .comment-header {
+  border-radius: var(--border-radius, 4px) !important;
+  border-bottom-width: 1px !important;
+  opacity: 0.75;
+}
+
+.rf-bot-toggle {
+  margin-left: 8px;
+  font-size: 12px;
+}

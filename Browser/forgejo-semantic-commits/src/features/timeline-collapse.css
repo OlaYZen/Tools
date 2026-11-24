@@ -1,0 +1,17 @@
+.rf-tl-hidden {
+  display: none !important;
+}
+
+.rf-tl-bar {
+  position: relative;
+  margin: 8px 0 8px 16px;
+  padding: 6px 12px;
+  border: 1px dashed var(--color-secondary, #d0d7de);
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--color-box-body, transparent);
+}
+
+.rf-tl-verbs {
+  color: var(--color-text-light-2, GrayText);
+}

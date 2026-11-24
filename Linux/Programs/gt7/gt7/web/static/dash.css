@@ -1,0 +1,419 @@
+/* GT7 pit wall.
+
+   This is a race engineer's screen, not a driver's. The driver has the shift
+   lights and the speedo in the car; the engineer has a monitor, a radio, and
+   two hours to sit in front of it. So the priorities invert: trends and
+   projections over instantaneous values, tabular density over big numbers,
+   and no flashing anywhere - what reads as urgent for three seconds in a
+   cockpit is hostile over a stint.
+
+   The palette is the timing-screen convention: amber and red for states that
+   need action, and the FIA purple reserved for one thing only, a best lap. */
+
+:root {
+  --panel: #0a0c0f;
+  --raised:#0e1116;        /* panel field, one step off the ground */
+  --seam:  #1d232b;
+  --rail:  #171c23;
+  --ink:   #e8edf2;
+  --dim:   #59636f;
+  --dimmer:#39424c;
+
+  --go:   #2fe06a;
+  --warn: #ffb020;
+  --hot:  #ff3b30;
+  --cool: #35c8ff;
+  --best: #c46bff;         /* fastest lap. Never used for anything else. */
+
+  --display: "Chakra Petch", "DIN Alternate", system-ui, sans-serif;
+  --mono: "Azeret Mono", "JetBrains Mono", ui-monospace, Menlo, monospace;
+
+  --gutter: clamp(0.7rem, 1.4vw, 1.25rem);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--panel);
+  color: var(--ink);
+  font-family: var(--display);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* minmax(0, 1fr), never a bare 1fr. A bare 1fr is minmax(auto, 1fr), so the
+   row cannot shrink below its content's min-content height - and once the map
+   column held two canvases, that pushed the `now` strip past the bottom edge
+   where overflow:hidden erased it. The strip carries the throttle and brake
+   meters, so they simply vanished. */
+body { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+
+b { font-weight: 700; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+i { font-style: normal; }
+
+/* ---- bezel ------------------------------------------------------------- */
+
+.bezel {
+  display: flex; align-items: center; gap: 1.15rem; flex-wrap: wrap;
+  padding: 0.5rem var(--gutter);
+  border-bottom: 1px solid var(--seam);
+  font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--dim);
+}
+.bezel-spacer { flex: 1; }
+.bezel-item b { color: var(--ink); font-size: 0.82rem; letter-spacing: 0; }
+
+.link { display: inline-flex; align-items: center; gap: 0.45rem; color: var(--dim); }
+.link::before { content: ""; width: 7px; height: 7px; background: var(--dim); flex: none; }
+.link.is-live { color: var(--go); }
+.link.is-live::before { background: var(--go); box-shadow: 0 0 8px var(--go); }
+.link.is-warn { color: var(--warn); }
+.link.is-warn::before { background: var(--warn); }
+.link.is-down { color: var(--hot); }
+.link.is-down::before { background: var(--hot); }
+
+.pit {
+  font-size: 0.66rem; letter-spacing: 0.12em; font-weight: 600;
+  color: var(--panel); background: var(--cool); padding: 0.1rem 0.45rem;
+}
+.pit[hidden] { display: none; }
+.pit.is-done { background: var(--dimmer); color: var(--ink); }
+
+.fault {
+  font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0;
+  text-transform: none; color: var(--panel); background: var(--hot);
+  padding: 0.1rem 0.4rem;
+}
+.fault[hidden] { display: none; }
+
+.daylight { font-size: 0.68rem; color: var(--warn); }
+.daylight[data-v="night"] { color: var(--cool); }
+.daylight[data-v="dusk"] { color: var(--best); }
+
+/* ---- wall grid --------------------------------------------------------- */
+
+.wall {
+  display: grid;
+  grid-template-columns: minmax(270px, 0.95fr) minmax(0, 1.35fr) minmax(240px, 0.9fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "radio stint map"
+    "lower tyres map";
+  gap: 1px;
+  background: var(--seam);
+  min-height: 0;
+}
+/* One class per cell - no element carries two grid-area rules, so the layout
+   does not depend on which rule happens to come last. */
+.col-radio       { grid-area: radio; }
+.col-stint       { grid-area: stint; }
+.col-lower-left  { grid-area: lower; }
+.col-lower-right { grid-area: tyres; }
+.col-map         { grid-area: map; }
+/* Each cell is a column so the lower left can stack race over fuel. */
+/* overflow hidden so a crowded column clips inside its own cell rather than
+   growing the grid and shoving the strip below it off screen. */
+.col { display: flex; flex-direction: column; gap: 1px; background: var(--seam);
+       min-height: 0; overflow: hidden; }
+.col > .panel { flex: 1 1 auto; min-height: 0; }
+.col-radio > .panel-radio, .col-stint > .panel-stint { flex: 1 1 0; }
+.panel {
+  background: var(--panel);
+  padding: 0.75rem var(--gutter) 0.9rem;
+  min-width: 0; min-height: 0;
+  display: flex; flex-direction: column;
+}
+.panel-head {
+  margin: 0 0 0.6rem;
+  flex-wrap: wrap;
+  font-size: 0.72rem; font-weight: 600;
+  letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim);
+  display: flex; align-items: baseline; gap: 0.6rem;
+}
+.panel-note {
+  font-size: 0.62rem; letter-spacing: 0.08em; color: var(--dimmer);
+  font-weight: 400; text-transform: none;
+}
+.panel-note-warn { color: var(--warn); }
+.panel-note-warn:empty { display: none; }
+
+/* ---- signature: the radio panel ---------------------------------------- */
+
+.calls { list-style: none; margin: 0; padding: 0; overflow-y: auto; display: grid; gap: 0.4rem; align-content: start; }
+.calls:empty { display: none; }
+.calls-empty, .table-empty {
+  margin: 0; color: var(--dimmer); font-size: 0.85rem; line-height: 1.5; max-width: 40ch;
+}
+.calls-empty[hidden], .table-empty[hidden] { display: none; }
+
+.call {
+  background: var(--raised);
+  border-left: 3px solid var(--dim);
+  padding: 0.55rem 0.75rem;
+}
+.call-message {
+  font-size: clamp(0.95rem, 1.35vw, 1.18rem);
+  line-height: 1.35; font-weight: 600;
+}
+.call-detail {
+  font-family: var(--mono); font-size: 0.7rem; color: var(--dim);
+  margin-top: 0.3rem; font-variant-numeric: tabular-nums;
+}
+.call.sev-critical { border-left-color: var(--hot); }
+.call.sev-critical .call-message { color: var(--hot); }
+.call.sev-warn { border-left-color: var(--warn); }
+.call.sev-warn .call-message { color: var(--warn); }
+.call.sev-info { border-left-color: var(--dimmer); }
+
+/* A new callout announces itself once, then settles. No repeating flash: the
+   engineer is looking at this for two hours. */
+.call.is-new { animation: arrive 900ms ease-out 1; }
+@keyframes arrive {
+  0%   { background: color-mix(in srgb, var(--warn) 22%, var(--raised)); }
+  100% { background: var(--raised); }
+}
+
+/* ---- stint table ------------------------------------------------------- */
+
+.table-wrap { overflow-y: auto; min-height: 0; flex: 1; }
+.laps { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 0.78rem; }
+.laps th {
+  position: sticky; top: 0; background: var(--panel); z-index: 1;
+  text-align: right; padding: 0 0.45rem 0.4rem; font-weight: 500;
+  font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--dimmer); font-family: var(--display);
+  border-bottom: 1px solid var(--seam);
+}
+.laps td {
+  text-align: right; padding: 0.28rem 0.45rem;
+  font-variant-numeric: tabular-nums; border-bottom: 1px solid var(--raised);
+}
+.laps .col-num, .laps td:first-child { text-align: left; color: var(--dim); }
+.lap-time { color: var(--ink); }
+.lap-row.is-best .lap-time { color: var(--best); }
+.delta-best { color: var(--best); }
+.delta-near { color: var(--dim); }
+.delta-off  { color: var(--warn); }
+.delta-far  { color: var(--hot); }
+.count-zero { color: var(--dimmer); }
+.count-some { color: var(--warn); }
+.count-many { color: var(--hot); }
+.count-none { color: var(--dimmer); }
+.lap-row.is-new { animation: arrive 900ms ease-out 1; }
+
+/* ---- fuel and tyres ---------------------------------------------------- */
+
+.big { display: flex; align-items: baseline; gap: 0.5rem; }
+.big-value {
+  font-family: var(--mono); font-weight: 700;
+  font-size: clamp(2rem, 4.2vw, 3.2rem); line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.big-unit { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
+
+.facts { margin: 0.75rem 0 0; display: flex; flex-wrap: wrap; gap: 0.35rem 1.5rem; }
+.facts dt { font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); }
+.facts dd {
+  margin: 0.1rem 0 0; font-family: var(--mono); font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.verdict {
+  margin: 0.75rem 0 0; padding: 0.45rem 0.6rem;
+  background: var(--raised); border-left: 3px solid var(--dimmer);
+  font-size: 0.82rem; line-height: 1.4; color: var(--dim);
+}
+.verdict.is-good { border-left-color: var(--go); color: var(--go); }
+.verdict.is-warn { border-left-color: var(--warn); color: var(--warn); }
+.verdict.is-bad  { border-left-color: var(--hot); color: var(--hot); }
+
+.corners { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--seam); border: 1px solid var(--seam); }
+.corner { background: var(--panel); padding: 0.45rem 0.55rem; display: grid; gap: 0.15rem; min-width: 0; }
+.corner-id { font-size: 0.6rem; letter-spacing: 0.14em; color: var(--dim); }
+.corner-temp { font-family: var(--mono); font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.corner.temp-cold .corner-temp { color: var(--cool); }
+.corner.temp-good .corner-temp { color: var(--go); }
+.corner.temp-hot  .corner-temp { color: var(--hot); }
+.spark {
+  font-family: var(--mono); font-size: 0.8rem; line-height: 1;
+  color: var(--dimmer); letter-spacing: -0.04em; overflow: hidden; white-space: nowrap;
+}
+.corner.temp-hot .spark { color: var(--hot); }
+
+.split-hot { color: var(--hot); }
+.split-warn { color: var(--warn); }
+.split-ok { color: var(--dim); }
+
+/* ---- track map --------------------------------------------------------- */
+
+.panel-map { min-height: 0; }
+/* The canvas is sized from its box, not from attributes, so it has to be
+   allowed to shrink inside the grid or it ratchets the row taller each frame. */
+/* Two maps share this column, so the floor has to be low enough that both
+   fit a laptop screen; they grow to fill whatever is actually available. */
+.canvas-box { flex: 1 1 0; min-height: 90px; position: relative; }
+/* Both canvases, by class - styling the first one by id left the second in
+   normal flow with no resolved box, which is how a zero-sized draw target
+   reached getContext. */
+.canvas-box > canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+}
+
+.map-key {
+  margin: 0.5rem 0 0; display: flex; flex-wrap: wrap; gap: 0.15rem 0.7rem;
+  font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim);
+  align-items: center;
+}
+.map-key .k { width: 11px; height: 3px; margin-right: 0.3rem; display: inline-block; }
+.k-brake { background: var(--hot); }
+.k-throttle { background: var(--go); }
+.k-partial { background: #7bbf57; }
+.k-coast { background: var(--dim); }
+.k-car { background: var(--cool); height: 7px; width: 7px; border-radius: 50%; }
+.k-lane {
+  background: none; height: 0; width: 12px;
+  border-top: 1px dashed var(--dim); align-self: center;
+}
+.k-lost { background: var(--hot); }
+.k-gained { background: var(--go); }
+.k-lock { background: var(--hot); height: 7px; width: 7px; border-radius: 50%; }
+.k-spin { background: var(--warn); height: 7px; width: 7px; border-radius: 50%; }
+
+/* Two maps share the column, so neither may claim the whole height. */
+.col-map > .panel-map { flex: 1 1 0; min-height: 0; }
+.col-map > .panel-mapnote { flex: 0 0 auto; padding-top: 0.4rem; }
+.panel-mapnote .map-note { margin: 0; }
+
+.worst { list-style: none; margin: 0.45rem 0 0; padding: 0; display: grid; gap: 0.15rem; }
+.worst:empty { display: none; }
+.worst li {
+  font-family: var(--mono); font-size: 0.68rem; color: var(--dim);
+  font-variant-numeric: tabular-nums; display: flex; gap: 0.5rem;
+}
+.worst b { color: var(--hot); }
+#delta-total { margin-left: auto; font-variant-numeric: tabular-nums; }
+#delta-total.is-up { color: var(--hot); }
+#delta-total.is-down { color: var(--go); }
+
+.map-note {
+  margin: 0.5rem 0 0; font-size: 0.66rem; line-height: 1.5; color: var(--dimmer);
+}
+#map-len { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+.map-tools { display: inline-flex; gap: 0.25rem; }
+.tool {
+  font: inherit; font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--dim); background: var(--raised); border: 1px solid var(--seam);
+  padding: 0.12rem 0.4rem; cursor: pointer;
+}
+.tool:hover { color: var(--ink); border-color: var(--dim); }
+.tool.is-on { color: var(--panel); background: var(--cool); border-color: var(--cool); }
+#map-state.is-circuit { color: var(--go); }
+
+/* ---- race ------------------------------------------------------------- */
+
+.race-net { margin: 0.6rem 0 0; font-size: 0.9rem; color: var(--dim); }
+.race-net.is-up { color: var(--go); }
+.race-net.is-down { color: var(--warn); }
+
+.moves { list-style: none; margin: 0.5rem 0 0; padding: 0; display: grid; gap: 0.2rem; }
+.moves:empty { display: none; }
+.moves li {
+  font-family: var(--mono); font-size: 0.74rem; color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+.moves .up { color: var(--go); }
+.moves .down { color: var(--warn); }
+
+/* Stating the limit in the interface, not just the docs: an engineer looking
+   for a gap should learn straight away that there is not one to find. */
+.no-gaps {
+  margin: 0.7rem 0 0; font-size: 0.72rem; line-height: 1.5;
+  color: var(--dimmer); border-top: 1px solid var(--seam); padding-top: 0.5rem;
+}
+
+/* ---- now strip --------------------------------------------------------- */
+
+.now {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: clamp(0.7rem, 2vw, 1.8rem);
+  padding: 0.5rem var(--gutter);
+  border-top: 1px solid var(--seam);
+  font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim);
+}
+.now-label { color: var(--dimmer); }
+.now-speed b { font-size: 1.35rem; color: var(--ink); }
+.now-rpm b { font-size: 0.95rem; color: var(--ink); }
+.now-gear {
+  font-family: var(--mono); font-weight: 700; font-size: 1.35rem; color: var(--ink);
+  min-width: 1.4ch; text-align: center;
+}
+.now-item b { color: var(--ink); font-size: 0.85rem; letter-spacing: 0; }
+.now-item .best { color: var(--best); }
+.hint { font-size: 0.6rem; color: var(--dimmer); border-bottom: 1px dotted var(--dimmer); cursor: help; }
+
+.now-bar { display: inline-flex; align-items: center; gap: 0.4rem; }
+.now-bar-label { font-size: 0.62rem; color: var(--dim); }
+.segbar { display: inline-flex; gap: 2px; height: 0.7rem; width: clamp(60px, 7vw, 100px); }
+
+/* Steering reads from the centre out, because that is what the input is:
+   a signed deflection from straight, not a level. */
+.steer {
+  position: relative; display: inline-block;
+  height: 0.7rem; width: clamp(60px, 7vw, 100px); background: var(--rail);
+}
+.steer-centre { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--seam); }
+.steer-dot {
+  position: absolute; top: 0; bottom: 0; width: 4px; background: var(--cool);
+  left: 50%; transform: translateX(-50%); transition: left 50ms linear;
+}
+.steer-dot.at-lock { background: var(--warn); }
+.segbar > i { flex: 1 1 0; background: var(--rail); transition: background-color 40ms linear; }
+.segbar > i.on { background: var(--cool); }
+.segbar[data-hue="hot"] > i.on { background: var(--hot); }
+
+/* ---- curtain ----------------------------------------------------------- */
+
+.curtain {
+  position: fixed; inset: 0; z-index: 20;
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  display: grid; align-content: center; justify-items: center; gap: 0.6rem;
+  padding: var(--gutter); text-align: center;
+}
+.curtain[hidden] { display: none; }
+.curtain-head { margin: 0; font-size: clamp(1.5rem, 4vw, 2.6rem); font-weight: 700; color: var(--warn); }
+.curtain-body { margin: 0; max-width: 44ch; color: var(--dim); line-height: 1.55; font-size: 0.92rem; }
+
+/* ---- narrower screens -------------------------------------------------- */
+
+@media (max-width: 1250px) {
+  .wall {
+    grid-template-columns: minmax(280px, 1fr) minmax(0, 1.4fr);
+    grid-template-areas:
+      "radio stint"
+      "lower tyres"
+      "map   map";
+  }
+  .canvas-box { min-height: 200px; }
+}
+
+@media (max-width: 950px) {
+  html, body { overflow: auto; }
+  .wall {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+    grid-template-areas: "radio" "stint" "map" "lower" "tyres";
+  }
+  .col { min-height: auto; }
+  .table-wrap { max-height: 46vh; }
+  .calls { max-height: none; }
+  .corners { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0ms !important; animation: none !important; }
+}
+
+:focus-visible { outline: 2px solid var(--cool); outline-offset: 2px; }

@@ -1,0 +1,17 @@
+relative-time[datetime],
+.rf-abs-date {
+  cursor: pointer;
+}
+
+.rf-abs-date {
+  display: none;
+  font-variant-numeric: tabular-nums;
+}
+
+html.rf-abs-on relative-time[data-rf-abs] {
+  display: none !important;
+}
+
+html.rf-abs-on .rf-abs-date {
+  display: inline;
+}

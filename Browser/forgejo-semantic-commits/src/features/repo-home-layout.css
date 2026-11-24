@@ -1,0 +1,300 @@
+/* GitHub-style repository home: main column + 296px sidebar. */
+.rf-gh-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 296px;
+  gap: 24px;
+  align-items: start;
+  margin-top: 16px;
+}
+
+.rf-gh-main {
+  min-width: 0;
+  /* Never let anything (wide tables, long lines) paint into the sidebar. */
+  overflow-x: clip;
+}
+
+/* The file table is "single line" (nowrap): without this, long commit messages
+   make the table wider than the column. max-width: 0 lets a table cell shrink
+   below its content; the message column takes the squeeze and ellipsises. */
+.rf-gh-main #repo-files-table {
+  width: 100% !important;
+  max-width: 100%;
+}
+/* Newer Forgejo puts the latest-commit row in <thead> as <th>; older as <td>. */
+.rf-gh-main #repo-files-table td.name {
+  width: 30%;
+  max-width: 0;
+}
+.rf-gh-main #repo-files-table td.message,
+.rf-gh-main #repo-files-table :is(th, td):not(.age):first-child[colspan],
+.rf-gh-main #repo-files-table thead :is(th, td):not(.age),
+.rf-gh-main #repo-files-table .repo-files-table-latest-commit-left {
+  width: auto;
+  max-width: 0;
+}
+.rf-gh-main #repo-files-table td.name,
+.rf-gh-main #repo-files-table td.message,
+.rf-gh-main #repo-files-table thead :is(th, td):not(.age),
+.rf-gh-main #repo-files-table .repo-files-table-latest-commit-left {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rf-gh-main #repo-files-table td.name > *,
+.rf-gh-main #repo-files-table td.message > * {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rf-gh-main #repo-files-table :is(th, td).age {
+  width: 1%;
+  white-space: nowrap;
+}
+.rf-gh-main > .repo-button-row:first-child {
+  margin-top: 0;
+}
+
+.rf-gh-hidden {
+  display: none !important;
+}
+
+/* Narrow screens: sidebar stacks above the files, like GitHub on mobile. */
+@media (max-width: 1011px) {
+  .rf-gh-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rf-gh-side {
+    order: -1;
+  }
+}
+
+/* --- sidebar ---------------------------------------------------------------- */
+.rf-gh-side {
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.rf-gh-box {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--color-secondary);
+}
+.rf-gh-box:first-child {
+  padding-top: 0;
+}
+.rf-gh-box:last-child {
+  border-bottom: 0;
+}
+
+.rf-gh-h2 {
+  margin: 0 0 16px !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  line-height: 1.5;
+}
+.rf-gh-h2-link {
+  color: var(--color-text) !important;
+}
+.rf-gh-h2-link:hover {
+  color: var(--color-primary) !important;
+  text-decoration: none;
+}
+
+.rf-gh-desc {
+  margin: 0 0 16px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.rf-gh-muted {
+  color: var(--color-text-light-2, var(--color-text-light));
+}
+.rf-gh-small {
+  font-size: 12px;
+}
+
+.rf-gh-website {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  margin-bottom: 16px;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+.rf-gh-website span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Topics as GitHub's blue pills */
+.rf-gh-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 16px !important;
+}
+.rf-gh-topics .repo-topic.ui.label {
+  margin: 0 !important;
+  padding: 0 10px !important;
+  border: 0 !important;
+  border-radius: 2em !important;
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent) !important;
+  color: var(--color-primary) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  line-height: 22px !important;
+}
+.rf-gh-topics .repo-topic.ui.label:hover {
+  background: var(--color-primary) !important;
+  color: var(--color-primary-contrast, #fff) !important;
+}
+
+.rf-gh-meta {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rf-gh-meta li + li {
+  margin-top: 8px;
+}
+
+.rf-gh-meta-link {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-light-2, var(--color-text-light)) !important;
+}
+a.rf-gh-meta-link:hover {
+  color: var(--color-primary) !important;
+  text-decoration: none;
+}
+.rf-gh-meta-link strong {
+  margin-right: 4px;
+  color: var(--color-text);
+}
+a.rf-gh-meta-link:hover strong {
+  color: inherit;
+}
+
+/* Octicon tinted with currentColor */
+.rf-gh-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  background-color: currentColor;
+  -webkit-mask: var(--rf-icon) center / 16px 16px no-repeat;
+  mask: var(--rf-icon) center / 16px 16px no-repeat;
+}
+
+.rf-gh-counter {
+  display: inline-block;
+  min-width: 20px;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 2em;
+  background: var(--color-label-bg, color-mix(in srgb, var(--color-text) 12%, transparent));
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* Releases */
+.rf-gh-release-link {
+  display: flex;
+  gap: 0;
+  align-items: flex-start;
+  color: var(--color-text) !important;
+}
+.rf-gh-release-link:hover strong {
+  color: var(--color-primary);
+}
+.rf-gh-release-link .rf-gh-icon {
+  margin-top: 3px;
+  color: #2ea043;
+}
+.rf-gh-release-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.rf-gh-latest {
+  padding: 0 7px;
+  border: 1px solid #2ea043;
+  border-radius: 2em;
+  color: #2ea043;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+.rf-gh-more {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 12px;
+}
+
+/* Languages */
+.rf-gh-langbar {
+  display: flex;
+  height: 8px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  border-radius: 6px;
+}
+.rf-gh-langbar-slice {
+  min-width: 2px;
+}
+.rf-gh-langbar-slice + .rf-gh-langbar-slice {
+  margin-left: 2px;
+}
+.rf-gh-langs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+.rf-gh-langs li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.rf-gh-langs strong {
+  font-weight: 600;
+}
+.rf-gh-langdot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* --- main column ------------------------------------------------------------ */
+.rf-gh-refcounts {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  margin: 0 8px;
+  font-size: 14px;
+}
+.rf-gh-refcounts .rf-gh-icon {
+  margin-right: 6px;
+}
+
+.rf-gh-commits {
+  margin-right: 12px;
+  white-space: nowrap;
+  font-size: 14px;
+  vertical-align: middle;
+}
+:is(th, td):has(> .rf-gh-commits) {
+  white-space: nowrap;
+}
+.rf-gh-commits .rf-gh-icon {
+  margin-right: 6px;
+}

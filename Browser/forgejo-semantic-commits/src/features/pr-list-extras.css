@@ -1,0 +1,21 @@
+.rf-pr-size {
+  margin-left: 6px;
+  height: 18px;
+  font-size: 11px;
+}
+
+.rf-pr-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 4px;
+}
+.rf-pr-head a {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rf-pr-arrow {
+  opacity: 0.6;
+}

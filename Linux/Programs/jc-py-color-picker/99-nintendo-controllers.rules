@@ -1,0 +1,18 @@
+# udev rules granting non-root access to Nintendo Switch controllers over hidraw.
+#
+# Install:
+#   sudo cp 99-nintendo-controllers.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules && sudo udevadm trigger
+#
+# Then re-pair / reconnect the controller.  After this the color picker can
+# read/write colors without running as root.
+#
+# 057e:2006  Joy-Con (L)
+# 057e:2007  Joy-Con (R)
+# 057e:2009  Pro Controller
+# 057e:200e  Charging Grip
+
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="057e", ATTRS{idProduct}=="2006", MODE="0660", TAG+="uaccess"
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="057e", ATTRS{idProduct}=="2007", MODE="0660", TAG+="uaccess"
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="057e", ATTRS{idProduct}=="2009", MODE="0660", TAG+="uaccess"
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="057e", ATTRS{idProduct}=="200e", MODE="0660", TAG+="uaccess"

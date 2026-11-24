@@ -1,0 +1,9 @@
+# core telemetry client
+pycryptodomex>=3.19
+
+# web dashboard (gt7 serve)
+fastapi>=0.110
+uvicorn[standard]>=0.27
+
+# terminal dashboard (gt7 dash)
+rich>=13.0

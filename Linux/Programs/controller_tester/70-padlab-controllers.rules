@@ -1,0 +1,14 @@
+# Optional: give the logged-in user raw HID access (WebHID) to PlayStation and
+# Nintendo controllers. Steam's 60-steam-input.rules already covers DS4,
+# DualSense and the Switch Pro Controller; this adds Joy-Cons and the grip.
+#   sudo cp 70-padlab-controllers.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules && sudo udevadm trigger
+# then unplug / reconnect the controller.
+
+# Sony (DS4, DualSense, DualSense Edge) — USB and Bluetooth
+KERNEL=="hidraw*", ATTRS{idVendor}=="054c", MODE="0660", TAG+="uaccess"
+KERNEL=="hidraw*", KERNELS=="*054C:*", MODE="0660", TAG+="uaccess"
+
+# Nintendo (Pro Controller, Joy-Con L/R, charging grip) — USB and Bluetooth
+KERNEL=="hidraw*", ATTRS{idVendor}=="057e", MODE="0660", TAG+="uaccess"
+KERNEL=="hidraw*", KERNELS=="*057E:*", MODE="0660", TAG+="uaccess"

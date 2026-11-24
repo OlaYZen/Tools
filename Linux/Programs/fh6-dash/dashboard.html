@@ -1,0 +1,1081 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FH6 Dash — Forza Horizon 6 Telemetry</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:ui-monospace,"Cascadia Code",Menlo,monospace;
+         background:#0a0d12; color:#e6edf3; -webkit-font-smoothing:antialiased; }
+  header { display:flex; align-items:center; gap:.55rem .9rem; flex-wrap:wrap;
+    padding:.5rem 1rem; border-bottom:1px solid #1c2129; background:#0b0e14; }
+  header h1 { font-size:.92rem; margin:0; letter-spacing:.06em; white-space:nowrap; }
+  .status { font-size:.74rem; color:#8b949e; display:flex; align-items:center; gap:.4rem; white-space:nowrap; }
+  .dot { width:.55rem; height:.55rem; border-radius:50%; background:#f85149; }
+  .dot.live { background:#3fb950; box-shadow:0 0 9px #3fb950; }
+  .pill { font-size:.72rem; padding:.15rem .5rem; border-radius:999px; border:1px solid #2a313c; color:#8b949e; }
+  .pill.on { color:#3fb950; border-color:#1d3a26; background:#0f2417; }
+  .pill.off{ color:#f0883e; border-color:#3a2a1d; background:#241a0f; }
+
+  /* ---- app shell: header + glance strip + analysis grid (mobile-first) ---- */
+  .app{ display:flex; flex-direction:column; min-height:100dvh; }
+  .grid { display:grid; gap:10px; padding:10px; grid-template-columns:1fr; flex:1; min-height:0; }
+  .card { background:#0e1219; border:1px solid #1c2129; border-radius:12px; padding:11px 13px;
+          display:flex; flex-direction:column; min-width:0; min-height:0; }
+  .card h2 { font-size:.65rem; text-transform:uppercase; letter-spacing:.1em; color:#6b7684;
+             margin:0 0 8px; font-weight:600; display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+  /* tablet: two columns, page scrolls naturally */
+  @media (min-width:760px){
+    .grid{ grid-template-columns:repeat(2,1fr); gap:12px; padding:12px; }
+    .card.wide, .mapcard{ grid-column:1 / -1; }
+  }
+  /* desktop: lock the whole dashboard to the viewport — 4 x 2 with the map spanning two, no page scroll */
+  @media (min-width:1180px) and (min-height:720px){
+    .app{ height:100dvh; overflow:hidden; }
+    .grid{ grid-template-columns:repeat(4,1fr); grid-template-rows:1fr 1fr; gap:12px; padding:12px; overflow:hidden; }
+    .card{ overflow:hidden; }
+    .card.wide{ grid-column:auto; }
+    .mapcard{ grid-column:span 2; }
+  }
+
+  /* ---- glance strip: the always-visible instrument bar ---- */
+  .strip{ display:flex; align-items:center; gap:12px 20px; flex-wrap:wrap;
+          padding:9px 16px; background:#0e1219; border-bottom:1px solid #1c2129;
+          position:sticky; top:0; z-index:4; }
+  .ro{ display:flex; flex-direction:column; line-height:1; }
+  .ro .v{ font-size:1.5rem; font-weight:700; font-variant-numeric:tabular-nums; }
+  .ro .u{ font-size:.58rem; color:#6b7684; text-transform:uppercase; letter-spacing:.09em; margin-top:.3rem; }
+  .ro.big .v{ font-size:2.5rem; }
+  .ro.gear .v{ font-size:2.7rem; min-width:1.3ch; text-align:center; color:#58a6ff; }
+  .rpmwrap{ flex:1 1 190px; min-width:160px; }
+  .rpmtop{ display:flex; justify-content:space-between; font-size:.62rem; color:#8b949e; }
+  .rpmbar{ height:12px; background:#161b22; border-radius:6px; overflow:hidden; margin-top:5px; }
+  .rpmbar>div{ height:100%; width:0%; background:linear-gradient(90deg,#3fb950,#d29922 70%,#f85149); transition:width .04s linear; }
+  .pedals{ display:flex; flex-direction:column; gap:3px; min-width:148px; }
+  .prow{ display:flex; align-items:center; gap:7px; }
+  .plbl{ width:26px; font-size:.54rem; color:#6b7684; letter-spacing:.04em; }
+  .lapinfo{ display:flex; gap:8px 14px; font-size:.7rem; color:#8b949e; flex-wrap:wrap; }
+  .lapinfo b{ color:#e6edf3; font-variant-numeric:tabular-nums; }
+  /* on phones the strip wraps tall, so don't pin it — and tighten the hero numbers */
+  @media (max-width:759px){
+    .strip{ position:static; gap:10px 16px; padding:9px 12px; }
+    .ro.big .v{ font-size:2.05rem; } .ro.gear .v{ font-size:2.25rem; }
+    header{ padding:.5rem .8rem; }
+  }
+
+  canvas{display:block; width:100%;}
+  .canvas-box{position:relative; flex:1; min-height:158px;}
+  .mapcard .canvas-box{ min-height:220px; }
+  @media (min-width:1180px) and (min-height:720px){ .canvas-box, .mapcard .canvas-box{min-height:0;} }
+
+  /* shift light */
+  .shiftbig{display:flex; align-items:baseline; gap:.5rem;}
+  .shiftbig .v{font-size:2.6rem; font-weight:800; font-variant-numeric:tabular-nums;}
+  .shiftbig .u{font-size:.7rem; color:#6b7684;}
+  .leds{display:flex; gap:4px; margin:10px 0;}
+  .led{flex:1; height:16px; border-radius:3px; background:#161b22; transition:background .05s, box-shadow .05s;}
+  .note{font-size:.62rem; color:#4b5563; line-height:1.4;}
+  .geartable{display:flex; flex-wrap:wrap; gap:5px; margin-top:9px;}
+  .gcell{flex:1 1 0; min-width:46px; background:#11161f; border:1px solid #1c2129; border-radius:6px;
+         padding:4px 2px; text-align:center; position:relative;}
+  .gcell.cur{border-color:#58a6ff; background:#0f1b2c;}
+  .gcell .g{font-size:.55rem; color:#5b6473; letter-spacing:.06em;}
+  .gcell .r{font-size:.82rem; font-weight:700; font-variant-numeric:tabular-nums;}
+  .gcell .r.est{color:#d29922;} .gcell .r.live{color:#3fb950;} .gcell .r.none{color:#3b4654;}
+  .gcell .cdot{position:absolute; top:3px; right:3px; width:5px; height:5px; border-radius:50%;}
+
+  /* suspension */
+  .car{display:grid; grid-template-columns:1fr 40px 1fr; grid-template-rows:auto auto auto;
+       gap:10px 6px; align-items:center; justify-items:center; padding:4px 0;}
+  .chassis{grid-column:2; grid-row:1 / span 3; width:26px; border-radius:8px;
+           background:linear-gradient(#1c2330,#11161f); border:1px solid #232c39; align-self:stretch;}
+  .corner{display:flex; flex-direction:column; align-items:center; gap:4px; width:100%;}
+  .cl{font-size:.58rem; color:#5b6473; letter-spacing:.08em;}
+  .susp{width:30px; height:56px; background:#11161f; border:1px solid #232c39; border-radius:7px; position:relative; overflow:hidden;}
+  .susp .fill{position:absolute; left:0; right:0; bottom:0; height:50%; transition:height .05s linear, background .15s;}
+  .sval{font-size:.6rem; color:#8b949e; font-variant-numeric:tabular-nums;}
+
+  /* tire grip */
+  .tire{width:52px; border-radius:8px; border:2px solid #232c39; background:#11161f;
+        padding:5px 4px; display:flex; flex-direction:column; align-items:center; gap:3px;
+        transition:border-color .1s, box-shadow .1s; }
+  .tire .tt{font-size:.8rem; font-weight:700; font-variant-numeric:tabular-nums;}
+  .tswatch{width:100%; height:6px; border-radius:3px;}
+  .slipbars{display:flex; gap:3px; width:100%;}
+  .sb{flex:1; height:20px; background:#0a0d12; border-radius:3px; position:relative; overflow:hidden;}
+  .sb>i{position:absolute; left:0; right:0; bottom:0; display:block;}
+  .sblabel{font-size:.5rem; color:#5b6473; text-align:center;}
+
+  /* pedal + steer bars (live in the glance strip) */
+  .inbar{flex:1; height:9px; background:#161b22; border-radius:5px; overflow:hidden;}
+  .inbar>div{height:100%; width:0%; transition:width .05s linear;}
+  .steerwrap{height:11px; background:#161b22; border-radius:6px; position:relative; flex:1;}
+  .steerwrap>.mid{position:absolute; left:50%; top:0; bottom:0; width:1px; background:#2a313c;}
+  .steerwrap>.knob{position:absolute; top:1px; bottom:1px; width:11px; border-radius:50%; background:#58a6ff; left:50%; transform:translateX(-50%); transition:left .05s linear;}
+
+  /* clutch / shift quality */
+  .clutchwrap{display:flex; gap:24px; flex-wrap:wrap;}
+  .clutchbig{display:flex; align-items:baseline; gap:.35rem;}
+  .clutchbig .v{font-size:3rem; font-weight:800; font-variant-numeric:tabular-nums; line-height:1;}
+  .clutchbig .u{font-size:.68rem; color:#6b7684; text-transform:uppercase; letter-spacing:.08em;}
+  .cstat{font-size:.74rem; color:#8b949e; margin-top:9px;} .cstat b{color:#e6edf3; font-variant-numeric:tabular-nums;}
+  .clutchctl{display:flex; align-items:center; gap:8px; margin-top:12px; font-size:.7rem; color:#8b949e; flex-wrap:wrap;}
+  .clutchctl input{width:50px; background:#11161f; border:1px solid #232c39; color:#e6edf3; border-radius:5px; padding:2px 5px; font-family:inherit; font-size:.72rem;}
+  .clutchctl button{background:#1c2129; border:1px solid #2a313c; color:#8b949e; border-radius:5px; padding:3px 10px; cursor:pointer; font-family:inherit; font-size:.7rem;}
+  .clutchctl button:hover{color:#e6edf3; border-color:#3a424f;}
+  .misslist{display:flex; flex-direction:column; gap:3px; max-height:168px; overflow:auto; margin-top:6px;}
+  .missrow{display:flex; gap:10px; align-items:center; font-size:.72rem; background:#11161f; border:1px solid #1c2129; border-radius:6px; padding:3px 9px;}
+  .missrow .ma{font-weight:700; width:54px;} .missrow.up .ma{color:#f85149;} .missrow.dn .ma{color:#e0986a;}
+  .missrow .mp{color:#f0883e; font-variant-numeric:tabular-nums; width:48px;}
+  .missrow .mr{color:#6b7684; margin-left:auto; font-variant-numeric:tabular-nums;}
+
+  table{width:100%; border-collapse:collapse; font-size:.72rem;}
+  td{padding:.2rem .6rem; border-bottom:1px solid #161b22;}
+  td:first-child{color:#6b7684; white-space:nowrap;}
+  td:last-child{text-align:right; font-variant-numeric:tabular-nums;}
+  .rawgrid{columns:3; column-gap:24px;} @media(max-width:800px){.rawgrid{columns:2}} @media(max-width:520px){.rawgrid{columns:1}}
+  /* when not driving (e.g. alt-tabbed out), dim the stale live-telemetry cards — but keep the
+     clutch stats card bright and fully clickable so you can read it and hit reset while paused. */
+  .idle-veil > :not(#clutchCard):not(#mapCard){opacity:.4; pointer-events:none; transition:opacity .3s;}
+  .legend{display:flex; gap:14px; font-size:.64rem; color:#8b949e; margin-top:8px; flex-wrap:wrap;}
+
+  /* car identity (lives in the header) */
+  .carid{display:flex; flex-direction:column; line-height:1.15; min-width:0; max-width:42vw;}
+  .carname{font-size:.95rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .carsub{font-size:.63rem; color:#8b949e; margin-top:2px; display:flex; align-items:center; gap:5px; flex-wrap:wrap;}
+  .badge{background:#1f2a16; color:#3fb950; border:1px solid #2a3a1d; padding:0 6px; border-radius:5px; font-weight:700; font-size:.6rem;}
+  /* header action buttons */
+  .hdr-actions{display:flex; gap:6px; margin-left:auto;}
+  .hbtn{background:#11161f; border:1px solid #232c39; color:#8b949e; border-radius:7px; padding:4px 10px; font:inherit; font-size:.7rem; cursor:pointer;}
+  .hbtn:hover{color:#e6edf3; border-color:#3a424f;}
+  .hbtn.active{color:#58a6ff; border-color:#1f3350; background:#0f1b2c;}
+  /* raw-fields modal overlay */
+  .overlay{position:fixed; inset:0; background:rgba(5,7,10,.78); backdrop-filter:blur(3px);
+           display:flex; align-items:center; justify-content:center; z-index:20; padding:20px;}
+  .overlay[hidden]{display:none;}
+  .overlay-box{background:#0e1219; border:1px solid #232c39; border-radius:14px; padding:16px 18px;
+               max-width:920px; width:100%; max-height:84vh; overflow:auto;}
+  .overlay-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:.82rem; color:#8b949e;}
+  /* verbose explanations are hidden until you hit "explain"; while shown, let height-locked
+     cards scroll internally so the revealed text is never clipped on the desktop layout */
+  .note{display:none;} body.show-notes .note{display:block;}
+  body.show-notes .card{overflow:auto;}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <h1>🏎 FH6 DASH</h1>
+  <div class="carid">
+    <span class="carname" id="carName">—</span>
+    <span class="carsub"><span class="badge" id="carClass">—</span><b id="carPI">—</b> PI · <span id="carDrive">—</span> · <span id="carCyl">—</span></span>
+  </div>
+  <span id="racePill" class="pill off">not driving</span>
+  <div class="hdr-actions">
+    <button id="explainBtn" class="hbtn">ⓘ explain</button>
+    <button id="rawBtn" class="hbtn">raw</button>
+  </div>
+  <span class="status"><span id="dot" class="dot"></span><span id="statusText">waiting…</span> · <span id="count">0</span> pkts</span>
+</header>
+
+<!-- glance strip: the always-visible instruments -->
+<section class="strip">
+  <div class="ro big"><span class="v" id="speed">0</span><span class="u">km/h</span></div>
+  <div class="ro big gear"><span class="v" id="gear">N</span><span class="u">gear</span></div>
+  <div class="rpmwrap">
+    <div class="rpmtop"><span>ENGINE</span><span><b id="rpm">0</b> / <span id="rpmmax">0</span> rpm</span></div>
+    <div class="rpmbar"><div id="rpmfill"></div></div>
+  </div>
+  <div class="ro"><span class="v" id="power">0</span><span class="u">hp</span></div>
+  <div class="ro"><span class="v" id="torque">0</span><span class="u">Nm</span></div>
+  <div class="ro"><span class="v" id="boost">0.00</span><span class="u">bar boost</span></div>
+  <div class="pedals">
+    <div class="prow"><span class="plbl">THR</span><div class="inbar"><div id="inAccel" style="background:#3fb950"></div></div></div>
+    <div class="prow"><span class="plbl">BRK</span><div class="inbar"><div id="inBrake" style="background:#f85149"></div></div></div>
+    <div class="prow"><span class="plbl">CLU</span><div class="inbar"><div id="inClutch" style="background:#58a6ff"></div></div></div>
+    <div class="prow"><span class="plbl">HND</span><div class="inbar"><div id="inHand" style="background:#d29922"></div></div></div>
+    <div class="prow"><span class="plbl">STR</span><div class="steerwrap"><div class="mid"></div><div class="knob" id="steerKnob"></div></div></div>
+  </div>
+  <div class="lapinfo">
+    <span>Lap <b id="lap">0</b></span><span>Pos <b id="pos">-</b></span>
+    <span>Best <b id="bestlap">--</b></span><span>Last <b id="lastlap">--</b></span>
+  </div>
+</section>
+
+<main class="grid" id="grid">
+
+  <!-- track map -->
+  <section class="card mapcard" id="mapCard" style="order:0">
+    <h2><span>Track map <span id="mapState" style="color:#6b7684;text-transform:none;letter-spacing:0;cursor:pointer;" title="click to rename the selected track">recording…</span></span>
+        <span style="display:flex;gap:5px;align-items:center;">
+          <select id="trackSelect" class="hbtn" style="padding:2px 4px;font-size:.62rem;max-width:130px;"></select>
+          <button id="mapRename" class="hbtn" style="padding:2px 8px;font-size:.62rem;">rename</button>
+          <button id="mapForget" class="hbtn" style="padding:2px 8px;font-size:.62rem;">forget</button>
+          <button id="mapClear" class="hbtn" style="padding:2px 8px;font-size:.62rem;">clear</button>
+        </span></h2>
+    <div class="canvas-box"><canvas id="trackmap"></canvas></div>
+    <div class="legend">
+      <span style="color:#3fb950">█ throttle</span><span style="color:#f85149">█ braking</span>
+      <span style="color:#566273">█ coasting</span>
+      <span id="mapLen" style="margin-left:auto;color:#8b949e;font-variant-numeric:tabular-nums;">—</span>
+    </div>
+    <div class="note">Top-down trace from the car's real world position, coloured by your inputs — <b style="color:#f85149">red</b> = braking zones, <b style="color:#3fb950">green</b> = on throttle, grey = coasting. Auto-fits as you drive; fast-travel starts a fresh trace. Drive a full loop and it's flagged a <b style="color:#3fb950">circuit</b>. Hit clear to wipe it.</div>
+  </section>
+
+  <!-- shift assistant -->
+  <section class="card" style="order:1">
+    <h2>Shift assistant <span id="shiftState" style="color:#4b5563;text-transform:none;letter-spacing:0;">learning…</span></h2>
+    <div class="shiftbig">
+      <span style="font-size:.7rem;color:#6b7684;">UPSHIFT&nbsp;@</span>
+      <span class="v" id="shiftRpm">—</span><span class="u">rpm · gear <b id="shiftGear">-</b></span>
+    </div>
+    <div class="leds" id="leds"></div>
+    <div class="canvas-box"><canvas id="shiftgraph"></canvas></div>
+    <div class="legend">
+      <span style="color:#58a6ff">▬ power (hp)</span><span style="color:#d29922">▬ torque (Nm)</span>
+      <span style="color:#3fb950">● now</span><span style="color:#f85149">┊ shift pt</span>
+      <span style="margin-left:auto;color:#6b7684">power &amp; torque curves — upshift at the dashed line</span>
+    </div>
+    <div class="geartable" id="gearTable"></div>
+    <div class="note" style="margin-top:6px">The upshift point is the rpm where the next gear makes more <b>wheel torque (engine Nm × gear ratio)</b> than staying — so torque drives the maths; power (hp = Nm × rpm) is the same data shown a second way. Learns your torque curve × per-gear ratios from full-throttle, going-straight data and re-optimises every frame. Only counts while rolling at full throttle with the clutch out — standing-still revs, clutch-in, and the moment of each shift are ignored. Do clean pulls <b>all the way to the redline</b> in each gear so the top of the curve is learned. Gears you haven't driven yet get a <b style="color:#a371f7">~predicted</b> shift point, forecast from the ratios of the gears you have — it firms up to <b style="color:#3fb950">live</b> once you drive that gear.</div>
+  </section>
+
+  <!-- trail braking -->
+  <section class="card wide" style="order:3">
+    <h2>Trail braking — throttle / brake / steering <span style="color:#4b5563;text-transform:none;letter-spacing:0;">last ~12s</span></h2>
+    <div class="canvas-box"><canvas id="trail"></canvas></div>
+    <div class="legend"><span style="color:#3fb950">█ throttle</span><span style="color:#f85149">█ brake</span>
+      <span style="color:#58a6ff">▬ steering</span>
+      <span id="absLeg" style="color:#f0883e">● ABS (lock-up)</span><span id="tcLeg" style="color:#2dd4bf">● TC (wheelspin)</span>
+      <span style="margin-left:auto;color:#6b7684">ABS/TC inferred from wheel slip — no direct flag in telemetry</span></div>
+  </section>
+
+  <!-- G-force -->
+  <section class="card" style="order:6">
+    <h2>G-Force</h2>
+    <div class="canvas-box"><canvas id="gforce"></canvas></div>
+    <div class="legend"><span>lat <b id="glat">0.00</b>g</span><span>lon <b id="glon">0.00</b>g</span><span>peak <b id="gpeak">0.00</b>g</span></div>
+  </section>
+
+  <!-- suspension -->
+  <section class="card" style="order:5">
+    <h2>Suspension</h2>
+    <div class="car">
+      <div class="chassis"></div>
+      <div class="corner" style="grid-column:1;grid-row:1"><span class="cl">FL</span><div class="susp"><div class="fill" id="suspFL"></div></div><span class="sval" id="suspFLv">0.00</span></div>
+      <div class="corner" style="grid-column:3;grid-row:1"><span class="cl">FR</span><div class="susp"><div class="fill" id="suspFR"></div></div><span class="sval" id="suspFRv">0.00</span></div>
+      <div class="corner" style="grid-column:1;grid-row:3"><span class="cl">RL</span><div class="susp"><div class="fill" id="suspRL"></div></div><span class="sval" id="suspRLv">0.00</span></div>
+      <div class="corner" style="grid-column:3;grid-row:3"><span class="cl">RR</span><div class="susp"><div class="fill" id="suspRR"></div></div><span class="sval" id="suspRRv">0.00</span></div>
+    </div>
+    <div class="note" style="text-align:center">blue extended · red compressed</div>
+  </section>
+
+  <!-- tires -->
+  <section class="card" style="order:4">
+    <h2>Tires — temp &amp; grip (per corner)</h2>
+    <div class="car">
+      <div class="chassis"></div>
+      <div class="corner" style="grid-column:1;grid-row:1"><span class="cl">FRONT LEFT</span><div class="tire" id="tireFL"></div></div>
+      <div class="corner" style="grid-column:3;grid-row:1"><span class="cl">FRONT RIGHT</span><div class="tire" id="tireFR"></div></div>
+      <div class="corner" style="grid-column:1;grid-row:3"><span class="cl">REAR LEFT</span><div class="tire" id="tireRL"></div></div>
+      <div class="corner" style="grid-column:3;grid-row:3"><span class="cl">REAR RIGHT</span><div class="tire" id="tireRR"></div></div>
+    </div>
+    <div class="note" style="margin-top:6px">Red border = slipping (combined&nbsp;&gt;&nbsp;1). <b>R</b>=slip&nbsp;ratio (traction/lock), <b>A</b>=slip&nbsp;angle (cornering).
+      Note: FH6 Data Out sends <b>one temp per tire</b> — the in-game Heat screen's inner/middle/outer split is not in the UDP stream.</div>
+  </section>
+
+  <!-- clutch / shift quality -->
+  <section class="card" id="clutchCard" style="order:2">
+    <h2>Clutch shift quality <span id="clutchSub" style="color:#4b5563;text-transform:none;letter-spacing:0;">lift the gas through every shift</span></h2>
+    <div class="clutchwrap">
+      <div style="min-width:160px;">
+        <div class="clutchbig"><span class="v" id="clutchRate">—</span><span class="u">% clean upshifts</span></div>
+        <div class="cstat">↑ upshifts <b id="upRate">—</b> · <b id="upMiss" style="color:#f85149">0</b> missed</div>
+        <div class="cstat">↓ downshifts <b id="downRate">—</b> · <b id="downMiss" style="color:#e0986a">0</b> on-gas</div>
+        <div class="clutchctl">
+          <label>miss if throttle ≥ <input id="missPctInput" type="number" min="0.5" max="20" step="0.5"> %</label>
+          <button id="clutchReset">reset</button>
+        </div>
+      </div>
+      <div style="flex:1; min-width:210px;">
+        <h2 style="margin-bottom:2px;">Recent fumbles <span id="missCount" style="color:#4b5563;text-transform:none;letter-spacing:0;"></span></h2>
+        <div class="misslist" id="missList"></div>
+      </div>
+    </div>
+    <div class="note" style="margin-top:8px;">A shift is <b style="color:#3fb950">clean</b> when your throttle drops below the threshold during the gear change — i.e. you actually lifted off. If the gas stays in, it's a <b style="color:#f85149">miss</b>. Each fumble logs the gear change, the throttle still applied, and the rpm. <b>Upshifts</b> drive the headline score; <b>downshifts</b> are tracked separately because a rev-match blip legitimately shows throttle. Threshold changes apply to new shifts; stats persist in this browser — hit reset to start fresh.</div>
+  </section>
+
+</main>
+</div><!-- /.app -->
+
+<div class="overlay" id="rawOverlay" hidden>
+  <div class="overlay-box">
+    <div class="overlay-head">All telemetry fields <button id="rawClose" class="hbtn">close</button></div>
+    <div class="rawgrid"><table><tbody id="rawtable"></tbody></table></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let frame=null, count=0, lastCount=-1, staleTimer=null, gPeak=0;
+const N_TRAIL = 360;                      // ~12s @ 30Hz
+const trailHist = { a:[], b:[], s:[], abs:[], tc:[] };
+// Forza sends no ABS/TC flag, so we infer intervention from wheel slip + pedal:
+//   ABS = braking while a wheel is past the lock-up slip limit (slip ratio strongly < 0)
+//   TC  = on throttle while a DRIVE wheel is past the spin limit (slip ratio strongly > 0)
+const SLIP_LIMIT = 0.20;                   // slip ratio beyond peak grip (~0.1-0.15) = sliding
+// Assist on/off is also not in telemetry, so we infer it: with the assist ON the game cuts
+// power/brake and slip stays bounded; sustained EXTREME slip means nothing is intervening,
+// i.e. that assist is OFF -> we hide its row (the dots wouldn't be real interventions).
+const BIG_SLIP = 0.45, OFF_SUSTAIN = 8;    // >0.45 slip held for >=8 frames (~265ms) = assist off
+let assistOrd=null, absOff=false, tcOff=false, absRun=0, tcRun=0;
+const gTrail = [];
+
+// learned, per-car engine + gearbox model (resets when the car changes)
+let carOrdinal = null;
+let torqueB = {};       // rpm bucket(50) -> {t: EMA torque (Nm), n}
+let curveRpms = [];     // sorted bucket keys
+let gearRatio = {};     // gear -> EMA(rpm per m/s of road speed)
+let gearRatioN = {};    // gear -> sample count (confidence)
+let shiftByGear = {};   // gear -> {rpm, learned, conf}  persisted & refined live
+let lastLearnGear = null, shiftSettle = 0;   // reject the rpm transient right after a gear change
+const MAXGEAR = 10;
+function resetModel(ord){ carOrdinal=ord; torqueB={}; curveRpms=[]; gearRatio={}; gearRatioN={}; shiftByGear={}; lastLearnGear=null; shiftSettle=0; }
+
+/* ---------- clutch / shift quality ----------
+   Manual-clutch coaching: a clean shift means lifting the gas while the gear changes.
+   We watch only the SETTLED gear (1..10). FH6 streams gear 11 for a frame or two mid-shift
+   (clutch disengaged / in transition) and 0 for reverse/neutral — both are ignored, so a
+   "5 -> 11 -> 4" telemetry blip reads as ONE 5->4 downshift, not two phantom shifts.
+   For each shift we scan the throttle over a small window spanning the change; if it never
+   dipped below the threshold, the gas was in the whole way through -> a miss. */
+const MISS_KEY='fh6_shiftStats', PCT_KEY='fh6_missPct';
+const SHIFT_PRE=4, SHIFT_POST=3;            // frames before/after the change scanned for a lift
+function loadShiftStats(){
+  try{ const s=JSON.parse(localStorage.getItem(MISS_KEY)); if(s&&s.up&&s.down&&s.misses) return s; }catch(e){}
+  return {up:{clean:0,total:0}, down:{clean:0,total:0}, misses:[]};
+}
+function saveShiftStats(){ try{ localStorage.setItem(MISS_KEY, JSON.stringify(shiftStats)); }catch(e){} }
+let shiftStats=loadShiftStats();
+let missPct=(()=>{ const v=parseFloat(localStorage.getItem(PCT_KEY)); return (isFinite(v)&&v>0)?v:2; })();
+let prevStableGear=null, pendingShift=null, clutchDirty=true;
+const accelHist=[];                         // recent throttle (0..255) for the pre-shift window
+
+function finalizeShift(){
+  const s=pendingShift; pendingShift=null; if(!s) return;
+  const pct=s.minA/255*100, clean=pct<missPct;       // throttle dipped below threshold = lifted = good
+  const b=shiftStats[s.type]; b.total++; if(clean) b.clean++;
+  if(!clean){
+    shiftStats.misses.unshift({type:s.type, from:s.from, to:s.to, pct:Math.round(pct*10)/10, rpm:s.rpm});
+    if(shiftStats.misses.length>50) shiftStats.misses.pop();
+  }
+  saveShiftStats(); clutchDirty=true;
+}
+
+function trackShift(f){
+  const accel=f.Accel, gear=f.Gear;
+  accelHist.push(accel); if(accelHist.length>SHIFT_PRE+1) accelHist.shift();
+  if(pendingShift){ pendingShift.minA=Math.min(pendingShift.minA, accel); pendingShift.left--; }
+
+  const stable = gear>=1 && gear<=10;       // 0=reverse/neutral, 11=mid-shift sentinel -> not settled
+  if(f.IsRaceOn===1 && stable && prevStableGear!==null && gear!==prevStableGear){
+    if(pendingShift) finalizeShift();        // close a back-to-back shift before opening the next
+    pendingShift={ from:prevStableGear, to:gear, type:gear>prevStableGear?'up':'down',
+                   minA:Math.min.apply(null,accelHist), rpm:Math.round(f.CurrentEngineRpm), left:SHIFT_POST };
+  } else if(pendingShift && pendingShift.left<=0){
+    finalizeShift();
+  }
+  if(stable) prevStableGear=gear;
+}
+
+function renderClutch(){
+  if(!clutchDirty) return; clutchDirty=false;
+  const up=shiftStats.up, down=shiftStats.down;
+  const upRate = up.total? Math.round(100*up.clean/up.total) : null;
+  const dnRate = down.total? Math.round(100*down.clean/down.total) : null;
+  const re=$('clutchRate');
+  re.textContent = upRate==null? '—' : upRate;
+  re.style.color = upRate==null? '#6b7684' : upRate>=95?'#3fb950' : upRate>=80?'#d29922' : '#f85149';
+  $('upRate').textContent   = up.total?   `${up.clean}/${up.total} (${upRate}%)`   : '—';
+  $('downRate').textContent = down.total? `${down.clean}/${down.total} (${dnRate}%)` : '—';
+  $('upMiss').textContent   = up.total-up.clean;
+  $('downMiss').textContent = down.total-down.clean;
+  $('missCount').textContent = shiftStats.misses.length? `last ${Math.min(shiftStats.misses.length,15)}` : '';
+  let html='';
+  for(const m of shiftStats.misses.slice(0,15)){
+    const arr=m.type==='up'?'↑':'↓';
+    html+=`<div class="missrow ${m.type==='up'?'up':'dn'}"><span class="ma">${arr} ${m.from}→${m.to}</span>`+
+          `<span class="mp">${m.pct}%</span><span class="mr">${m.rpm.toLocaleString()} rpm</span></div>`;
+  }
+  $('missList').innerHTML = html ||
+    '<div class="note" style="padding:8px 2px">No fumbles yet — lift fully when you shift and it stays clean. 👌</div>';
+}
+
+/* ---------- track map + smart track library ----------
+   FH6 streams the car's real WORLD position (PositionX/Z in metres), and the Horizon map uses ONE
+   fixed global coordinate system — the same road is always at the same coordinates, every drive.
+   That makes recognising a track trivial and robust: we just spatially match where you are now
+   against the tracks we've saved before (a grid spatial-hash → O(1) lookups). Close a loop and we're
+   confident it's a circuit → auto-save it; later drive onto any saved road → auto-select & show it.
+   The line is coloured by your pedals (red braking zones, green throttle) so each saved map doubles
+   as a racing-line reference. */
+const MAP_MIN_MOVE=3, MAP_MAX_PTS=6000, MAP_JUMP=200, MAP_LOOP_NEAR=40, MAP_LOOP_MIN=500;
+const SAVE_MIN_MOVE=6;                 // coarser spacing for stored tracks -> smaller localStorage
+const MATCH_CELL=25;                   // spatial-hash cell == match tolerance (m)
+const MATCH_MIN=0.6, MATCH_DROP=0.3, MATCH_WIN=140, MATCH_EVERY=12, MATCH_HOLD=3;
+const TRACKS_KEY='fh6_tracks', TNUM_KEY='fh6_trackNum';
+
+// live trace of the current drive
+const mapPts=[];                                   // {x,z,a,b}
+let mapLastX=null, mapLastZ=null, mapStartX=null, mapStartZ=null, mapLen=0, mapLoop=false, mapMap=null;
+
+// saved-track library + auto-matching state
+function loadTracks(){ try{ const t=JSON.parse(localStorage.getItem(TRACKS_KEY)); return Array.isArray(t)?t:[]; }catch(e){ return []; } }
+function saveTracks(){ try{ localStorage.setItem(TRACKS_KEY, JSON.stringify(tracks)); }catch(e){ console.warn('track save failed', e); } }
+let tracks=loadTracks();
+let trackIndex=new Map();
+let activeId=null, selMode='auto';                 // selMode: 'auto' | 'live' | <trackId pinned>
+let matchTick=0, matchCand=null, matchCandRun=0, matchLostRun=0, justSaved=0;
+const liveAx=p=>[p.x,p.z,p.a,p.b];                 // accessor: live point -> [x,z,a,b]
+
+function cellKey(cx,cz){ return cx+','+cz; }
+function buildTrackIndex(){
+  trackIndex=new Map();
+  for(const t of tracks) for(const p of t.pts){
+    const k=cellKey(Math.floor(p[0]/MATCH_CELL), Math.floor(p[1]/MATCH_CELL));
+    let a=trackIndex.get(k); if(!a){ a=[]; trackIndex.set(k,a); } a.push({id:t.id, x:p[0], z:p[1]});
+  }
+}
+buildTrackIndex();
+function trackById(id){ return tracks.find(t=>t.id===id)||null; }
+
+/* fraction of the recent points in `arr` that lie within tolerance of each saved track -> best one */
+function bestMatch(arr, ax){
+  if(!tracks.length || arr.length<8) return {id:null, frac:0};
+  const tol2=MATCH_CELL*MATCH_CELL, hits=new Map(); let n=0;
+  for(let i=Math.max(0,arr.length-MATCH_WIN); i<arr.length; i++){
+    const g=ax(arr[i]), px=g[0], pz=g[1], cx=Math.floor(px/MATCH_CELL), cz=Math.floor(pz/MATCH_CELL); n++;
+    const seen=new Set();
+    for(let dx=-1;dx<=1;dx++) for(let dz=-1;dz<=1;dz++){
+      const cell=trackIndex.get(cellKey(cx+dx,cz+dz)); if(!cell) continue;
+      for(const q of cell){ if(seen.has(q.id)) continue;
+        const ex=px-q.x, ez=pz-q.z; if(ex*ex+ez*ez<=tol2) seen.add(q.id); }
+    }
+    for(const id of seen) hits.set(id,(hits.get(id)||0)+1);
+  }
+  let bid=null, bf=0; for(const [id,c] of hits){ const f=c/n; if(f>bf){ bf=f; bid=id; } }
+  return {id:bid, frac:bf};
+}
+
+function downsamplePts(src, minMove){
+  const out=[]; let lx=null, lz=null;
+  for(const p of src){ if(lx===null || Math.hypot(p.x-lx,p.z-lz)>=minMove){ out.push([Math.round(p.x),Math.round(p.z),p.a,p.b]); lx=p.x; lz=p.z; } }
+  return out;
+}
+
+/* a closed loop is a confident circuit: save it (unless we already have this one). */
+function autoSaveLoop(){
+  const m=bestMatch(mapPts, liveAx);
+  if(m.id && m.frac>=MATCH_MIN){ activeId=m.id; return; }     // re-drove a known circuit -> just select it
+  const pts=downsamplePts(mapPts, SAVE_MIN_MOVE);
+  if(pts.length<12) return;
+  let minx=1e9,minz=1e9,maxx=-1e9,maxz=-1e9;
+  for(const p of pts){ if(p[0]<minx)minx=p[0]; if(p[0]>maxx)maxx=p[0]; if(p[1]<minz)minz=p[1]; if(p[1]>maxz)maxz=p[1]; }
+  const num=parseInt(localStorage.getItem(TNUM_KEY)||'0',10)+1; try{ localStorage.setItem(TNUM_KEY,num); }catch(e){}
+  const t={ id:'t'+Date.now().toString(36), name:'Track '+num, createdAt:Date.now(),
+            len:Math.round(mapLen), closed:true, pts, bbox:[minx,minz,maxx,maxz] };
+  tracks.push(t); while(tracks.length>50) tracks.shift();
+  saveTracks(); buildTrackIndex(); rebuildTrackSelect();
+  activeId=t.id; justSaved=120;                               // flash "✓ saved" for ~2s
+}
+
+/* in auto mode, pick the saved track you're currently on (with hysteresis so it doesn't flicker). */
+function updateMatch(){
+  if(selMode==='live'){ activeId=null; return; }
+  if(selMode!=='auto'){ activeId=selMode; return; }           // a specific track is pinned
+  const {id,frac}=bestMatch(mapPts, liveAx);
+  if(id && frac>=MATCH_MIN){
+    matchLostRun=0;
+    if(id!==activeId){ if(id===matchCand) matchCandRun++; else { matchCand=id; matchCandRun=1; }
+      if(matchCandRun>=MATCH_HOLD){ activeId=id; matchCand=null; matchCandRun=0; } }
+  } else {
+    matchCand=null; matchCandRun=0;
+    if(activeId && frac<MATCH_DROP && ++matchLostRun>=MATCH_HOLD*2){ activeId=null; matchLostRun=0; }
+  }
+}
+
+function trackMap(f){
+  if(f.IsRaceOn!==1) return;
+  const x=f.PositionX, z=f.PositionZ;
+  if(mapLastX===null){ mapStartX=x; mapStartZ=z; mapPts.push({x,z,a:f.Accel,b:f.Brake}); mapLastX=x; mapLastZ=z; return; }
+  const d=Math.hypot(x-mapLastX, z-mapLastZ);
+  if(d<MAP_MIN_MOVE) return;                        // barely moved (or parked) — don't clutter the trace
+  if(d>MAP_JUMP){ mapPts.length=0; mapStartX=x; mapStartZ=z; mapLen=0; mapLoop=false; }  // fast-travel -> fresh trace
+  else mapLen+=d;
+  mapPts.push({x,z,a:f.Accel,b:f.Brake});
+  if(mapPts.length>MAP_MAX_PTS) mapPts.shift();
+  mapLastX=x; mapLastZ=z;
+  // loop closed -> confident circuit -> auto-save (or re-select if it's one we already know)
+  if(!mapLoop && mapLen>MAP_LOOP_MIN && Math.hypot(x-mapStartX,z-mapStartZ)<MAP_LOOP_NEAR){ mapLoop=true; autoSaveLoop(); }
+  if(++matchTick>=MATCH_EVERY){ matchTick=0; updateMatch(); }
+}
+
+function clearMap(){ mapPts.length=0; mapLastX=mapLastZ=mapStartX=mapStartZ=null; mapLen=0; mapLoop=false; if(selMode==='auto') activeId=null; }
+
+function mapColor(a,b){ return b>8 ? '#f85149' : a>200 ? '#3fb950' : a>8 ? '#7bbf57' : '#566273'; }
+
+function drawColoredPath(ctx, arr, ax, X, Y, lw, alpha){
+  ctx.save(); ctx.globalAlpha=alpha; ctx.lineWidth=lw; ctx.lineJoin='round'; ctx.lineCap='round';
+  let cur=null, prev=ax(arr[0]);
+  const flush=()=>{ if(cur){ ctx.strokeStyle=cur; ctx.stroke(); } };
+  for(let i=1;i<arr.length;i++){ const g=ax(arr[i]), col=mapColor(g[2],g[3]);
+    if(col!==cur){ flush(); ctx.beginPath(); ctx.moveTo(X(prev[0]),Y(prev[1])); cur=col; }
+    ctx.lineTo(X(g[0]),Y(g[1])); prev=g; }
+  flush(); ctx.restore();
+}
+
+function setMapState(active){
+  const el=$('mapState');
+  if(active){ el.textContent=(justSaved>0?'✓ saved · ':'▣ ')+active.name; el.style.color=justSaved>0?'#3fb950':'#58a6ff'; }
+  else if(mapPts.length<2){ el.textContent='recording…'; el.style.color='#6b7684'; }
+  else if(mapLoop){ el.textContent='● circuit'; el.style.color='#3fb950'; }
+  else { el.textContent=(frame&&frame.LapNumber>0)?'lap '+frame.LapNumber:'recording'; el.style.color='#6b7684'; }
+}
+
+function drawMap(){
+  if(justSaved>0) justSaved--;
+  const c=$('trackmap'), ctx=fitCanvas(c), w=c.clientWidth, h=c.clientHeight, pad=12;
+  ctx.clearRect(0,0,w,h);
+  const active = activeId ? trackById(activeId) : null;
+  // length: a matched/saved track shows its FIXED length; live recording shows distance so far
+  const len = active ? active.len : mapLen;
+  $('mapLen').textContent = (active || mapPts.length>1) ? (len>=1000?(len/1000).toFixed(2)+' km':Math.round(len)+' m') : '—';
+  setMapState(active);
+  const baseArr = active ? active.pts : mapPts;
+  const baseAx  = active ? (p=>p)     : liveAx;
+  if(!baseArr || baseArr.length<2){ ctx.fillStyle='#4b5563'; ctx.font='11px ui-monospace';
+    ctx.fillText('drive to record the track…', 12, h/2); mapMap=null; return; }
+  // bounds: a saved track uses its stored bbox (stable view); a live trace fits its own points
+  let minX,maxX,minZ,maxZ;
+  if(active){ minX=active.bbox[0]; minZ=active.bbox[1]; maxX=active.bbox[2]; maxZ=active.bbox[3]; }
+  else { minX=1e9;maxX=-1e9;minZ=1e9;maxZ=-1e9;
+    for(const p of mapPts){ if(p.x<minX)minX=p.x; if(p.x>maxX)maxX=p.x; if(p.z<minZ)minZ=p.z; if(p.z>maxZ)maxZ=p.z; } }
+  const spanX=Math.max(1,maxX-minX), spanZ=Math.max(1,maxZ-minZ);
+  const s=Math.min((w-2*pad)/spanX,(h-2*pad)/spanZ);
+  const offx=(w-spanX*s)/2, offy=(h-spanZ*s)/2;
+  const X=x=>offx+(x-minX)*s, Y=z=>offy+(maxZ-z)*s;
+  mapMap={X,Y};
+  // base path: the saved track (dimmed) or the live trace (full), batched by input colour
+  drawColoredPath(ctx, baseArr, baseAx, X, Y, active?2.2:2.4, active?0.5:1);
+  // on a saved track, overlay your live position trail in white so you see where you are on it
+  if(active && mapPts.length>1){
+    ctx.save(); ctx.strokeStyle='rgba(230,237,243,.92)'; ctx.lineWidth=1.7; ctx.lineJoin='round'; ctx.lineCap='round';
+    const start=Math.max(0,mapPts.length-90); ctx.beginPath(); ctx.moveTo(X(mapPts[start].x),Y(mapPts[start].z));
+    for(let i=start+1;i<mapPts.length;i++) ctx.lineTo(X(mapPts[i].x),Y(mapPts[i].z));
+    ctx.stroke(); ctx.restore();
+  }
+  // start marker (live mode only) + current car position
+  if(!active && mapStartX!==null){ ctx.fillStyle='#8b949e'; ctx.beginPath(); ctx.arc(X(mapStartX),Y(mapStartZ),3.5,0,7); ctx.fill(); }
+  if(frame){ ctx.beginPath(); ctx.arc(X(frame.PositionX),Y(frame.PositionZ),5,0,7);
+    ctx.fillStyle='#58a6ff'; ctx.shadowColor='#58a6ff'; ctx.shadowBlur=10; ctx.fill(); ctx.shadowBlur=0; }
+}
+
+function rebuildTrackSelect(){
+  const sel=$('trackSelect'); if(!sel) return;
+  let html='<option value="auto">Auto-detect</option><option value="live">Live trace</option>';
+  for(const t of tracks){ const L=t.len>=1000?(t.len/1000).toFixed(1)+'km':t.len+'m';
+    html+=`<option value="${t.id}">${t.name} · ${L}</option>`; }
+  sel.innerHTML=html;
+  sel.value = (selMode==='auto'||selMode==='live') ? selMode : (trackById(selMode)?selMode:'auto');
+}
+
+/* ---------- helpers ---------- */
+function fmtLap(s){ if(!s||s<=0) return "--"; const m=Math.floor(s/60); const sec=(s%60).toFixed(3); return m>0?`${m}:${sec.padStart(6,'0')}`:sec; }
+function tempColor(t){ const h=Math.max(0,Math.min(220,220-(t-20)/(110-20)*220)); return `hsl(${h} 80% 50%)`; }
+function fitCanvas(c){ const r=c.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+  c.width=Math.max(1,r.width*dpr); c.height=Math.max(1,r.height*dpr);
+  const ctx=c.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); return ctx; }
+
+function torqueAt(rpm){
+  const a=curveRpms, n=a.length; if(n<2) return null;
+  if(rpm<a[0]) return torqueB[a[0]].t;          // clamp the low/idle end only
+  if(rpm>a[n-1]) return null;                    // ABOVE what we've sampled = unknown, never guess flat
+  let lo=0, hi=n-1;
+  while(hi-lo>1){ const mid=(lo+hi)>>1; if(a[mid]<=rpm) lo=mid; else hi=mid; }
+  const ka=a[lo], kb=a[hi], f=(rpm-ka)/(kb-ka);
+  return torqueB[ka].t + (torqueB[kb].t-torqueB[ka].t)*f;
+}
+
+/* learn torque curve + gear ratios from clean WOT-straight samples, then re-optimise */
+function learn(f){
+  if(f.CarOrdinal && f.CarOrdinal!==carOrdinal) resetModel(f.CarOrdinal);  // new car -> forget
+  const rpm=f.CurrentEngineRpm, idle=f.EngineIdleRpm||800, g=f.Gear;
+  const slip=Math.max(f.TireCombinedSlipRearLeft||0,f.TireCombinedSlipRearRight||0);
+  const inGear    = g>=1 && g<MAXGEAR;                // not neutral / reverse / top gear
+  const moving    = f.Speed > 3;                      // actually rolling — rejects standing-still revs
+  const clutchOut = (f.Clutch||0) < 5;                // clutch released: engine is tied to the wheels
+  const straight  = Math.abs(f.Steer) < 18;
+  const wot       = f.Accel >= 245 && f.Brake < 5;
+
+  // Skip the gear-change transient: for a few frames after any gear change the rpm
+  // flares/settles and the clutch slips, so neither the torque nor the ratio is real.
+  if(g!==lastLearnGear){ lastLearnGear=g; shiftSettle=6; }
+  if(shiftSettle>0){ shiftSettle--; refreshShift(f.EngineMaxRpm, idle); return; }
+
+  // Engine torque curve: only clean WOT, straight, in-gear, rolling, clutch-out samples.
+  // (Standing-still revs and clutched/decoupled frames are rejected — they don't reflect
+  //  the real on-track torque the wheels ever see.)
+  if(f.Torque>0 && rpm>idle+150 && wot && straight && inGear && moving && clutchOut && slip<1.5){
+    const k=Math.round(rpm/50)*50, b=torqueB[k];
+    if(!b){ torqueB[k]={t:f.Torque,n:1}; curveRpms.push(k); curveRpms.sort((x,y)=>x-y); }
+    else { b.t=b.t*0.7+f.Torque*0.3; b.n++; }     // EMA: smooths noise, adapts to tune
+  }
+  // Gear ratio rpm-per-(m/s); needs grip (no wheelspin), rolling, and the clutch engaged.
+  if(inGear && moving && clutchOut && slip<0.6 && rpm>idle){
+    const ratio=rpm/f.Speed;
+    gearRatio[g]=gearRatio[g]?gearRatio[g]*0.85+ratio*0.15:ratio;
+    gearRatioN[g]=(gearRatioN[g]||0)+1;
+  }
+  refreshShift(f.EngineMaxRpm, idle);              // re-optimise every frame
+}
+
+/* rpm of peak engine power (max of torque*rpm) over the learned curve; null if unknown.
+   The optimal upshift is never below this point, so we use it as a hard floor. */
+function powerPeakRpm(){
+  let best=null, bestP=-1;
+  for(const k of curveRpms){ const p=torqueB[k].t*k; if(p>bestP){ bestP=p; best=k; } }
+  return best;
+}
+
+/* how much of the rpm band that matters for a shift is actually covered (0..1) */
+function coverage(maxRpm){
+  let cov=0, need=0;
+  for(let s=Math.round(0.5*maxRpm); s<=maxRpm; s+=50){ need++; if(torqueAt(s)!=null) cov++; }
+  return need? cov/need : 0;
+}
+
+/* gear ratio (rpm per m/s) for gear g — measured if we've driven it, otherwise PREDICTED.
+   Gearbox ratios fall in a near-geometric progression, so ln(ratio) is ~linear in gear
+   number. We least-squares fit that line over the gears we HAVE driven and use it to
+   forecast the ratios of gears we haven't, letting us show a shift point for upcoming
+   gears before ever reaching them. Returns {v, pred} or null if too little is known. */
+function maxGearSeen(){ let m=0; for(let k=1;k<MAXGEAR;k++) if(gearRatio[k] && (gearRatioN[k]||0)>=4) m=k; return m; }
+/* predict ln(ratio) at gear g by least-squares fit of the known gears. With >=3 gears we
+   fit a quadratic (real gearboxes have shrinking steps -> ln(ratio) is convex in gear, so a
+   straight line over-spaces the upper gears); with 2 we fall back to a line. */
+function fitLnRatio(xs, ys, g){
+  const n=xs.length;
+  if(n>=3){
+    let S0=n,S1=0,S2=0,S3=0,S4=0,T0=0,T1=0,T2=0;
+    for(let i=0;i<n;i++){ const x=xs[i],y=ys[i],x2=x*x; S1+=x;S2+=x2;S3+=x2*x;S4+=x2*x2;T0+=y;T1+=x*y;T2+=x2*y; }
+    const det=(a,b,c,d,e,f,h,i,j)=>a*(e*j-f*i)-b*(d*j-f*h)+c*(d*i-e*h);
+    const D=det(S0,S1,S2,S1,S2,S3,S2,S3,S4); if(Math.abs(D)<1e-9) return null;
+    const a=det(T0,S1,S2,T1,S2,S3,T2,S3,S4)/D;
+    const b=det(S0,T0,S2,S1,T1,S3,S2,T2,S4)/D;
+    const c=det(S0,S1,T0,S1,S2,T1,S2,S3,T2)/D;
+    return a + b*g + c*g*g;
+  }
+  const b=(ys[1]-ys[0])/(xs[1]-xs[0]), a=ys[0]-b*xs[0];     // 2-point line
+  return a + b*g;
+}
+function gearRatioFor(g){
+  if(gearRatio[g] && (gearRatioN[g]||0)>=4) return {v:gearRatio[g], pred:false};   // measured
+  const top=maxGearSeen();
+  if(g > top+1) return null;                                // never invent gears beyond the gearbox
+  const xs=[], ys=[];
+  for(let k=1;k<MAXGEAR;k++){ if(gearRatio[k] && (gearRatioN[k]||0)>=6){ xs.push(k); ys.push(Math.log(gearRatio[k])); } }
+  if(xs.length<2) return null;                              // need >=2 known gears to extrapolate
+  const ln=fitLnRatio(xs, ys, g); if(ln==null || !isFinite(ln)) return null;
+  const v=Math.exp(ln);
+  // sanity: a higher gear must have a LOWER ratio than the gear below it. Reject unphysical
+  // fits (e.g. a quadratic that turns back upward) rather than show a bogus prediction.
+  if(g>top && gearRatio[top] && v >= gearRatio[top]*0.995) return null;
+  return {v, pred:true};                                    // forecast ratio for an un-driven gear
+}
+
+/* optimal upshift rpm for gear g: the lowest rpm where the NEXT gear makes more
+   wheel torque (engine torque x gear ratio) than staying in g.
+
+   Critically, we only ever reason about rpm we've actually SAMPLED. If the crossover
+   lies above the highest rpm we've seen, we can't know where it is — so we recommend the
+   top of the observed range (always reachable, since you've been there) and flag it
+   `partial` so the UI can ask for a higher pull. We never invent a redline target.
+
+   Either gear ratio may be PREDICTED (un-driven gear); if so the result is flagged
+   `predicted` so the UI shows it as a forecast until real data for that gear arrives. */
+function computeShift(g, maxRpm, idle){
+  const a=gearRatioFor(g), b=gearRatioFor(g+1);
+  if(!a || !b || curveRpms.length<4) return null;          // need both gears + a curve
+  const rg=a.v, rg1=b.v, predicted=a.pred||b.pred;
+  const r=rg1/rg;                                          // post-upshift rpm = s*r (<1)
+  const conf=coverage(maxRpm);
+  const lo=curveRpms[0], top=curveRpms[curveRpms.length-1];   // observed rpm window
+  // Search only where BOTH the current rpm (s) and the post-shift landing rpm (s*r) are
+  // inside observed data. Start no lower than peak power — the optimal upshift is never
+  // below it, and this rejects bogus early crossovers from a noisy low-rpm curve.
+  const start=Math.max(idle+300, Math.min(powerPeakRpm()||0, top));
+  for(let s=start; s<=top; s+=25){
+    if(s*r < lo) continue;                                 // landing rpm below known data
+    const cur=torqueAt(s), nxt=torqueAt(s*r);
+    if(cur==null || nxt==null) continue;
+    if(nxt*rg1 >= cur*rg) return {rpm:Math.round(s/10)*10, learned:conf>0.55 && !predicted, conf, partial:false, redline:false, predicted};
+  }
+  // No crossover within what we've seen. Two cases:
+  //  - we've sampled all the way to the limiter -> the next gear genuinely never wins, so
+  //    "rev to the limiter" IS the answer (confident, reachable).
+  //  - we haven't -> the crossover is above our highest sample; recommend that top, flagged
+  //    partial so the UI asks for a higher pull instead of guessing.
+  const sampledToLimit = top >= maxRpm-150;
+  return {rpm:Math.round(top/10)*10, learned:sampledToLimit && conf>0.55 && !predicted, conf,
+          partial:!sampledToLimit, redline:sampledToLimit, predicted};
+}
+
+/* re-evaluate every gear every frame. computeShift always works from the *accumulated*
+   model (torque buckets + ratios only ever improve), so the latest result is the most
+   accurate one we have — adopt it in BOTH directions. A light EMA on the rpm keeps the
+   number from jittering without ever freezing it high (the old "keep best conf" rule
+   ratcheted up and refused to come back down once an incomplete curve guessed rev-to-limit). */
+function refreshShift(maxRpm, idle){
+  for(let g=1; g<MAXGEAR; g++){
+    const r=computeShift(g, maxRpm, idle);
+    if(!r) continue;                                         // not enough data yet — keep current
+    const old=shiftByGear[g];
+    if(old) r.rpm = Math.round((old.rpm*0.6 + r.rpm*0.4)/10)*10;   // smooth, tracks up AND down
+    shiftByGear[g]=r;
+  }
+}
+
+/* ---------- canvases ---------- */
+function drawGforce(){
+  const c=$('gforce'), ctx=fitCanvas(c), w=c.clientWidth, h=c.clientHeight, cx=w/2, cy=h/2;
+  const R=Math.min(w,h)/2-6, scale=R/2.2; ctx.clearRect(0,0,w,h); ctx.lineWidth=1;
+  for(let g=0.5;g<=2.0;g+=0.5){ ctx.beginPath(); ctx.arc(cx,cy,g*scale,0,7); ctx.strokeStyle=g===1?'#2f3a48':'#1c2531'; ctx.stroke();
+    ctx.fillStyle='#3b4654'; ctx.font='9px ui-monospace'; ctx.fillText(g+'g',cx+g*scale-14,cy-3); }
+  ctx.strokeStyle='#1c2531'; ctx.beginPath(); ctx.moveTo(cx-R,cy); ctx.lineTo(cx+R,cy); ctx.moveTo(cx,cy-R); ctx.lineTo(cx,cy+R); ctx.stroke();
+  for(let i=0;i<gTrail.length;i++){ const p=gTrail[i], a=(i+1)/gTrail.length;
+    ctx.beginPath(); ctx.arc(cx+p.x*scale,cy+p.y*scale,2,0,7); ctx.fillStyle=`rgba(88,166,255,${a*0.5})`; ctx.fill(); }
+  if(frame){ const px=cx+(frame.AccelerationX/9.81)*scale, py=cy+(frame.AccelerationZ/9.81)*scale;
+    ctx.beginPath(); ctx.arc(px,py,6,0,7); ctx.fillStyle='#58a6ff'; ctx.shadowColor='#58a6ff'; ctx.shadowBlur=10; ctx.fill(); ctx.shadowBlur=0; }
+}
+
+function drawTrail(){
+  const c=$('trail'), ctx=fitCanvas(c), w=c.clientWidth, h=c.clientHeight; ctx.clearRect(0,0,w,h);
+  ctx.strokeStyle='#161b22'; for(let i=0;i<=4;i++){const y=h*i/4; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();}
+  const n=trailHist.a.length; if(n<2) return;
+  const X=i=>w*i/(N_TRAIL-1);
+  const area=(arr,col)=>{ ctx.beginPath(); ctx.moveTo(X(0),h);
+    for(let i=0;i<n;i++) ctx.lineTo(X(i), h-(arr[i]/255)*h);
+    ctx.lineTo(X(n-1),h); ctx.closePath(); ctx.fillStyle=col; ctx.fill(); };
+  area(trailHist.a,'rgba(63,185,80,.35)'); area(trailHist.b,'rgba(248,81,73,.40)');
+  const line=(arr,col,map)=>{ ctx.beginPath(); ctx.strokeStyle=col; ctx.lineWidth=1.6;
+    for(let i=0;i<n;i++){ const y=map(arr[i]); i?ctx.lineTo(X(i),y):ctx.moveTo(X(i),y);} ctx.stroke(); };
+  line(trailHist.a,'#3fb950',v=>h-(v/255)*h); line(trailHist.b,'#f85149',v=>h-(v/255)*h);
+  line(trailHist.s,'#58a6ff',v=>h/2-(v/127)*(h/2-4));   // steering centered
+
+  // ABS / TC markers — discrete glowing dots, not a solid bar. The onset always dots, then a
+  // dot every few frames while engaged, so a sustained grab reads as a spaced pulse train.
+  const PULSE=5;                                        // ~165ms between dots while engaged
+  const edges=arr=>{ let c=0; for(let i=1;i<n;i++) if(arr[i] && !arr[i-1]) c++; return c; };
+  const row=(arr,y,col,name,off)=>{
+    if(off){                                            // assist disabled -> show that, no dots
+      ctx.font='8px ui-monospace'; ctx.fillStyle='rgba(13,17,23,.72)'; ctx.fillRect(0,y-7,58,11);
+      ctx.fillStyle='#5b6473'; ctx.fillText(name+' off', 2, y+1.5); return;
+    }
+    ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=6; let run=-1;
+    for(let i=0;i<n;i++){
+      if(arr[i]){ run++; if(run%PULSE===0){ ctx.beginPath(); ctx.arc(X(i),y,2.8,0,7); ctx.fill(); } }
+      else run=-1;                                      // reset so the next onset always dots
+    }
+    ctx.shadowBlur=0;
+    const lbl=name+' ×'+edges(arr), tw=ctx.measureText(lbl).width;
+    ctx.font='8px ui-monospace'; ctx.fillStyle='rgba(13,17,23,.72)'; ctx.fillRect(0,y-7,tw+5,11);
+    ctx.fillStyle=col; ctx.fillText(lbl, 2, y+1.5);
+  };
+  ctx.font='8px ui-monospace';
+  row(trailHist.abs, 8,  '#f0883e', 'ABS', absOff);     // ABS = orange
+  row(trailHist.tc,  20, '#2dd4bf', 'TC',  tcOff);      // TC  = teal (hidden when TC is off)
+}
+
+/* dyno-style power curve: horsepower vs rpm, with the upshift point marked.
+   hp = torque(Nm) x rpm x 2pi/60 / 745.7. The curve is drawn only over the rpm we've
+   actually sampled, so the empty right-hand side visibly says "rev higher to map it". */
+const HP_K = 0.00014043;                          // Nm * rpm -> hp
+function drawShiftGraph(){
+  const c=$('shiftgraph'), ctx=fitCanvas(c), w=c.clientWidth, h=c.clientHeight, pad=4;
+  ctx.clearRect(0,0,w,h);
+  const g = frame? frame.Gear : 0;
+  const maxRpm = frame? frame.EngineMaxRpm : (curveRpms.length? curveRpms[curveRpms.length-1] : 8000);
+  const idle = frame? (frame.EngineIdleRpm||800) : 800;
+  if(curveRpms.length<3){
+    ctx.fillStyle='#4b5563'; ctx.font='11px ui-monospace';
+    ctx.fillText('learning… full-throttle pull in a straight line', 8, h/2); return;
+  }
+  const X = rpm => pad+(w-2*pad)*(rpm-idle)/(maxRpm-idle);
+  // sample both curves over the rev range; record peak power AND peak torque
+  const cv=[]; let pmax=0, peakRpm=idle, tmax=0, peakTqRpm=idle;
+  for(let s=idle; s<=maxRpm; s+=50){
+    const t=torqueAt(s); if(t==null) continue;     // beyond what we've learned -> leave blank
+    const hp=t*s*HP_K; if(hp>pmax){ pmax=hp; peakRpm=s; }
+    if(t>tmax){ tmax=t; peakTqRpm=s; }
+    cv.push({s,hp,t});
+  }
+  if(pmax<=0 || cv.length<2) return;
+  const Y  = v => h-pad-(h-2*pad)*v/(pmax*1.10);     // hp scale (left)
+  const Yt = v => h-pad-(h-2*pad)*v/((tmax||1)*1.10); // torque scale (own axis, dyno-style)
+
+  // faint horizontal hp gridlines
+  ctx.strokeStyle='#161b22'; ctx.fillStyle='#3b4654'; ctx.font='9px ui-monospace'; ctx.lineWidth=1;
+  for(let i=1;i<=3;i++){ const hp=pmax*i/3, y=Y(hp);
+    ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(w-pad,y); ctx.stroke(); ctx.fillText(Math.round(hp), pad+1, y-2); }
+
+  const sp = (g>=1)? shiftByGear[g] : null;
+  // shade everything past the shift point (the "you should have shifted" zone)
+  if(sp && sp.rpm<maxRpm){ ctx.fillStyle='rgba(248,81,73,.08)'; ctx.fillRect(X(sp.rpm),0,w-X(sp.rpm),h); }
+
+  // area + line for the power curve
+  ctx.beginPath(); ctx.moveTo(X(cv[0].s), h-pad);
+  for(const p of cv) ctx.lineTo(X(p.s), Y(p.hp));
+  ctx.lineTo(X(cv[cv.length-1].s), h-pad); ctx.closePath();
+  ctx.fillStyle='rgba(88,166,255,.12)'; ctx.fill();
+  ctx.beginPath(); for(let i=0;i<cv.length;i++){ const x=X(cv[i].s),y=Y(cv[i].hp); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+  ctx.strokeStyle='#58a6ff'; ctx.lineWidth=2; ctx.stroke();
+
+  // torque (Nm) curve — same learned data, on its own scale (a proper dyno chart). The
+  // shift point is the wheel-torque crossover, so this is the curve the calc actually uses.
+  ctx.beginPath(); for(let i=0;i<cv.length;i++){ const x=X(cv[i].s),y=Yt(cv[i].t); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+  ctx.strokeStyle='#d29922'; ctx.lineWidth=1.6; ctx.stroke();
+
+  // peak-power marker + label
+  { const x=X(peakRpm), y=Y(pmax); ctx.fillStyle='#58a6ff'; ctx.beginPath(); ctx.arc(x,y,3,0,7); ctx.fill();
+    ctx.fillStyle='#8b98a8'; ctx.font='9px ui-monospace';
+    ctx.fillText(Math.round(pmax)+'hp', Math.min(x+5, w-34), Math.max(10,y-3)); }
+
+  // peak-torque marker + label
+  { const x=X(peakTqRpm), y=Yt(tmax); ctx.fillStyle='#d29922'; ctx.beginPath(); ctx.arc(x,y,3,0,7); ctx.fill();
+    ctx.fillStyle='#caa45a'; ctx.font='9px ui-monospace';
+    ctx.fillText(Math.round(tmax)+'Nm', Math.min(x+5, w-42), Math.max(20,y+11)); }
+
+  // upshift point (dashed) + label — violet when the shift point is a prediction
+  if(sp){ const x=X(sp.rpm), col=sp.predicted?'#a371f7':'#f85149';
+    ctx.strokeStyle=col; ctx.setLineDash([4,3]); ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle=col; ctx.font='10px ui-monospace';
+    const lbl=(sp.predicted?'shift ~':'shift ')+sp.rpm.toLocaleString(), lw=ctx.measureText(lbl).width;
+    ctx.fillText(lbl, Math.max(pad, Math.min(x+4, w-lw-2)), h-4); }
+
+  // current rpm (now)
+  if(frame && frame.CurrentEngineRpm>0){ const x=X(frame.CurrentEngineRpm);
+    ctx.strokeStyle='#3fb950'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+}
+
+/* ---------- DOM ---------- */
+function setSusp(id,norm,m){ norm=Math.max(0,Math.min(1,norm)); $(id).style.height=(norm*100)+'%';
+  $(id).style.background=`hsl(${(1-norm)*210} 75% 50%)`; $(id+'v').textContent=m.toFixed(3); }
+
+function setTire(corner,temp,ratio,angle,combined){
+  const el=$('tire'+corner);
+  const slipping=combined>1;
+  el.style.borderColor = slipping?'#f85149':'#232c39';
+  el.style.boxShadow = slipping?'0 0 12px rgba(248,81,73,.6)':'none';
+  const rPct=Math.min(100,Math.abs(ratio)*60), aPct=Math.min(100,Math.abs(angle)*60);
+  el.innerHTML =
+    `<div class="tt">${Math.round(temp)}°C</div>`+
+    `<div class="tswatch" style="background:${tempColor(temp)}"></div>`+
+    `<div class="slipbars">`+
+      `<div class="sb"><i style="height:${rPct}%;background:${Math.abs(ratio)>1?'#f85149':'#d29922'}"></i></div>`+
+      `<div class="sb"><i style="height:${aPct}%;background:${Math.abs(angle)>1?'#f85149':'#58a6ff'}"></i></div>`+
+    `</div><div class="slipbars"><div class="sblabel">R ${ratio.toFixed(2)}</div><div class="sblabel">A ${angle.toFixed(2)}</div></div>`;
+}
+
+// build LED strip once
+const LEDN=12; for(let i=0;i<LEDN;i++){ const d=document.createElement('div'); d.className='led'; $('leds').appendChild(d); }
+function setLeds(frac){
+  const leds=$('leds').children;
+  for(let i=0;i<LEDN;i++){
+    const on=frac*LEDN>i; let col='#161b22', glow='none';
+    if(on){ if(i<7){col='#3fb950';} else if(i<10){col='#d29922';} else {col='#f85149';} glow=`0 0 6px ${col}`; }
+    if(frac>=1.0 && (i%2===0)){ col='#58a6ff'; glow='0 0 8px #58a6ff'; }   // flash blue: shift now
+    leds[i].style.background=col; leds[i].style.boxShadow=glow;
+  }
+}
+
+function render(){
+  if(frame){
+    const f=frame;
+    $('speed').textContent=(f.Speed*3.6).toFixed(0);
+    $('gear').textContent=f.Gear===0?'R':f.Gear;
+    $('power').textContent=(f.Power/745.7).toFixed(0);
+    $('torque').textContent=(f.Torque).toFixed(0);
+    $('boost').textContent=(f.Boost/14.5038).toFixed(2);   // Forza sends psi -> show bar
+    $('rpm').textContent=f.CurrentEngineRpm.toFixed(0);
+    $('rpmmax').textContent=f.EngineMaxRpm.toFixed(0);
+    $('rpmfill').style.width=Math.min(100,100*f.CurrentEngineRpm/(f.EngineMaxRpm||1))+'%';
+
+    const gx=f.AccelerationX/9.81, gz=f.AccelerationZ/9.81, gm=Math.hypot(gx,gz);
+    $('glat').textContent=gx.toFixed(2); $('glon').textContent=(-gz).toFixed(2);
+    if(gm>gPeak) gPeak=gm; $('gpeak').textContent=gPeak.toFixed(2);
+
+    setSusp('suspFL',f.NormalizedSuspensionTravelFrontLeft,f.SuspensionTravelMetersFrontLeft);
+    setSusp('suspFR',f.NormalizedSuspensionTravelFrontRight,f.SuspensionTravelMetersFrontRight);
+    setSusp('suspRL',f.NormalizedSuspensionTravelRearLeft,f.SuspensionTravelMetersRearLeft);
+    setSusp('suspRR',f.NormalizedSuspensionTravelRearRight,f.SuspensionTravelMetersRearRight);
+
+    setTire('FL',f.TireTempFrontLeft,f.TireSlipRatioFrontLeft,f.TireSlipAngleFrontLeft,f.TireCombinedSlipFrontLeft);
+    setTire('FR',f.TireTempFrontRight,f.TireSlipRatioFrontRight,f.TireSlipAngleFrontRight,f.TireCombinedSlipFrontRight);
+    setTire('RL',f.TireTempRearLeft,f.TireSlipRatioRearLeft,f.TireSlipAngleRearLeft,f.TireCombinedSlipRearLeft);
+    setTire('RR',f.TireTempRearRight,f.TireSlipRatioRearRight,f.TireSlipAngleRearRight,f.TireCombinedSlipRearRight);
+
+    $('inAccel').style.width=(f.Accel/255*100)+'%'; $('inBrake').style.width=(f.Brake/255*100)+'%';
+    $('inClutch').style.width=(f.Clutch/255*100)+'%'; $('inHand').style.width=(f.HandBrake/255*100)+'%';
+    $('steerKnob').style.left=(50+(f.Steer/127)*48)+'%';
+    $('lap').textContent=f.LapNumber; $('pos').textContent=f.RacePosition||'-';
+    $('bestlap').textContent=fmtLap(f.BestLap); $('lastlap').textContent=fmtLap(f.LastLap);
+    renderCar(f);
+
+    // shift assistant — per-gear, continuously refined
+    const g=f.Gear;
+    const sp = (g>=1)? shiftByGear[g] : null;
+    if(sp){
+      $('shiftRpm').textContent=sp.rpm.toLocaleString();
+      $('shiftGear').textContent=g+'→'+(g+1);
+      $('shiftState').textContent = sp.predicted? 'predicted ~ (drive this gear to confirm)'
+                                  : sp.partial? 'rev higher to refine ↑'
+                                  : sp.redline? 'rev to limit'
+                                  : (sp.learned? 'live · adapting' : 'estimate');
+      $('shiftState').style.color = sp.predicted? '#a371f7'
+                                  : sp.partial? '#d29922'
+                                  : sp.redline? '#58a6ff'
+                                  : (sp.learned? '#3fb950' : '#d29922');
+      setLeds(f.CurrentEngineRpm/sp.rpm);
+    } else if(g>=1 && gearRatio[g] && !gearRatio[g+1]){
+      $('shiftRpm').textContent='top'; $('shiftGear').textContent=g;
+      $('shiftState').textContent='top gear'; $('shiftState').style.color='#6b7684'; setLeds(0);
+    } else {
+      $('shiftRpm').textContent='—'; $('shiftGear').textContent=(g>=1?g+'→'+(g+1):'-');
+      $('shiftState').textContent='learning…'; $('shiftState').style.color='#4b5563'; setLeds(0);
+    }
+    // per-gear shift table (persisted best per gear)
+    let cells='';
+    for(let k=1;k<MAXGEAR;k++){
+      const s=shiftByGear[k]; if(!s && !gearRatio[k]) continue;
+      const cls = s? (s.learned?'live':'est') : 'none';
+      const val = s? ((s.predicted?'~':'')+s.rpm.toLocaleString()+(s.partial?'↑':'')) : '—';
+      const dot = s? (s.predicted?'#a371f7':(s.partial?'#d29922':(s.learned?'#3fb950':'#d29922'))) : '#3b4654';
+      cells += `<div class="gcell ${k===g?'cur':''}"><span class="cdot" style="background:${dot}"></span>`+
+               `<div class="g">${k}→${k+1}</div><div class="r ${cls}">${val}</div></div>`;
+    }
+    $('gearTable').innerHTML = cells;
+
+    const race=f.IsRaceOn===1;
+    $('racePill').textContent=race?'driving':'not driving'; $('racePill').className='pill '+(race?'on':'off');
+    $('grid').classList.toggle('idle-veil',!race);
+
+    const tb=$('rawtable');
+    if(tb.childElementCount===0){ for(const k of Object.keys(f)){ const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${k}</td><td id="raw_${k}"></td>`; tb.appendChild(tr);} }
+    for(const [k,v] of Object.entries(f)){ const c=$('raw_'+k);
+      if(c) c.textContent=(typeof v==='number'&&!Number.isInteger(v))?v.toFixed(4):v; }
+  }
+  renderClutch();
+  drawGforce(); drawTrail(); drawShiftGraph(); drawMap();
+  requestAnimationFrame(render);
+}
+
+function sample(){
+  if(!frame) return;
+  const f=frame;
+  trailHist.a.push(f.Accel); trailHist.b.push(f.Brake); trailHist.s.push(f.Steer);
+  // infer ABS (lock-up under braking) and TC (wheelspin under power) from slip ratios
+  const sFL=f.TireSlipRatioFrontLeft, sFR=f.TireSlipRatioFrontRight,
+        sRL=f.TireSlipRatioRearLeft, sRR=f.TireSlipRatioRearRight;
+  const lock = Math.min(sFL,sFR,sRL,sRR);
+  const driveSpin = f.DrivetrainType===0 ? Math.max(sFL,sFR)              // FWD: front wheels
+                  : f.DrivetrainType===2 ? Math.max(sFL,sFR,sRL,sRR)      // AWD: any wheel
+                  : Math.max(sRL,sRR);                                    // RWD: rear wheels
+  const absOn = f.Brake>8 && lock < -SLIP_LIMIT;
+  const tcOn  = f.Accel>8 && driveSpin > SLIP_LIMIT;
+  trailHist.abs.push(absOn?1:0); trailHist.tc.push(tcOn?1:0);
+  // infer whether each assist is even enabled: a new car re-assesses; sustained extreme
+  // lock-up / wheelspin (nothing intervening) latches that assist as OFF for the session.
+  if(f.CarOrdinal!==assistOrd){ assistOrd=f.CarOrdinal; absOff=tcOff=false; absRun=tcRun=0; }
+  absRun = (f.Brake>8 && lock < -BIG_SLIP)      ? absRun+1 : 0; if(absRun>=OFF_SUSTAIN) absOff=true;
+  tcRun  = (f.Accel>8 && driveSpin > BIG_SLIP)  ? tcRun+1  : 0; if(tcRun >=OFF_SUSTAIN) tcOff=true;
+  for(const k of ['a','b','s','abs','tc']) if(trailHist[k].length>N_TRAIL) trailHist[k].shift();
+  gTrail.push({x:f.AccelerationX/9.81, y:f.AccelerationZ/9.81}); if(gTrail.length>60) gTrail.shift();
+  trackShift(f);
+  trackMap(f);
+  if(f.IsRaceOn===1) learn(f);
+}
+setInterval(sample,33);
+
+/* ---------- car identity (auto-detected from telemetry; no manual naming) ----------
+   Telemetry only exposes cylinder COUNT — no displacement, no V/inline/flat layout. The
+   one extra engine trait we can derive is aspiration: NA engines sit at ~0 boost, forced-
+   induction ones climb well above it, so we track the peak boost seen and label it. */
+const CARCLASS=['D','C','B','A','S1','S2','X','X'];
+const DRIVETRAIN={0:'FWD',1:'RWD',2:'AWD'};
+let peakBoost=0, boostOrd=null;
+function renderCar(f){
+  const ord=f.CarOrdinal;
+  if(ord!==boostOrd){ boostOrd=ord; peakBoost=0; }       // new car -> forget aspiration
+  if(f.Boost>peakBoost) peakBoost=f.Boost;
+  $('carPI').textContent=f.CarPerformanceIndex||'—';
+  $('carClass').textContent=CARCLASS[f.CarClass] ?? ('C'+f.CarClass);
+  $('carDrive').textContent=DRIVETRAIN[f.DrivetrainType] ?? '—';
+  $('carCyl').textContent = f.NumCylinders>0
+    ? (f.NumCylinders+'-cyl' + (peakBoost>2 ? ` · forced +${(peakBoost/14.5038).toFixed(2)} bar` : ' · NA'))
+    : '—';
+  $('carName').textContent = ord? ('Car #'+ord) : '—';   // auto label from the ordinal
+}
+
+function connect(){
+  const proto=location.protocol==='https:'?'wss':'ws';
+  const sock=new WebSocket(`${proto}://${location.host}/ws`);
+  sock.onmessage=ev=>{ const m=JSON.parse(ev.data); frame=m.frame; count=m.received; $('count').textContent=count;
+    if(count!==lastCount){ lastCount=count; $('dot').classList.add('live'); $('statusText').textContent='receiving telemetry';
+      clearTimeout(staleTimer); staleTimer=setTimeout(()=>{ $('dot').classList.remove('live'); $('statusText').textContent='no telemetry (idle)'; },1200); } };
+  sock.onclose=()=>{ $('dot').classList.remove('live'); $('statusText').textContent='disconnected'; setTimeout(connect,1000); };
+}
+// clutch panel controls
+$('missPctInput').value=missPct;
+$('missPctInput').addEventListener('change',e=>{ const v=parseFloat(e.target.value);
+  if(isFinite(v)&&v>0){ missPct=v; localStorage.setItem(PCT_KEY,v); clutchDirty=true; } });
+$('clutchReset').addEventListener('click',()=>{ if(!confirm('Reset all shift stats?')) return;
+  shiftStats={up:{clean:0,total:0},down:{clean:0,total:0},misses:[]}; saveShiftStats(); clutchDirty=true; });
+
+// header toggles: "explain" reveals the verbose notes, "raw" opens the all-fields modal
+$('explainBtn').addEventListener('click',()=>{
+  const on=document.body.classList.toggle('show-notes'); $('explainBtn').classList.toggle('active',on); });
+$('mapClear').addEventListener('click', clearMap);
+rebuildTrackSelect();
+$('trackSelect').addEventListener('change',e=>{ const v=e.target.value;
+  if(v==='auto'){ selMode='auto'; }
+  else if(v==='live'){ selMode='live'; activeId=null; }
+  else { selMode=v; activeId=v; } });
+$('mapForget').addEventListener('click',()=>{
+  const t=activeId&&trackById(activeId);
+  if(!t){ alert('No saved track is selected to forget.'); return; }
+  if(!confirm('Forget saved track "'+t.name+'"?')) return;
+  tracks=tracks.filter(x=>x.id!==t.id); saveTracks(); buildTrackIndex();
+  activeId=null; selMode='auto'; rebuildTrackSelect(); });
+// rename the track currently shown on the map (pick one from the dropdown first to rename any saved track)
+function renameActiveTrack(){
+  const t=activeId&&trackById(activeId);
+  if(!t){ alert('Pick a saved track from the dropdown first, then rename it.'); return; }
+  const nm=prompt('Rename this track:', t.name);
+  if(nm&&nm.trim()){ t.name=nm.trim(); saveTracks(); rebuildTrackSelect(); }
+}
+$('mapRename').addEventListener('click', renameActiveTrack);
+$('mapState').addEventListener('click', renameActiveTrack);   // clicking the track name also renames
+const rawOverlay=$('rawOverlay');
+$('rawBtn').addEventListener('click',()=>{ rawOverlay.hidden=false; });
+$('rawClose').addEventListener('click',()=>{ rawOverlay.hidden=true; });
+rawOverlay.addEventListener('click',e=>{ if(e.target===rawOverlay) rawOverlay.hidden=true; });
+window.addEventListener('keydown',e=>{ if(e.key==='Escape') rawOverlay.hidden=true; });
+
+connect(); requestAnimationFrame(render);
+</script>
+</body>
+</html>

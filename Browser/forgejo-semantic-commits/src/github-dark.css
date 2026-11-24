@@ -1,0 +1,246 @@
+/*
+ * GitHub dark palette for Forgejo/Gitea dark themes (Primer "dark default").
+ * Active only when html.rf-ghdark is set (see src/early-theme.js), i.e. on a
+ * Forgejo page whose theme is dark. !important because theme files set the
+ * same variables on :root.
+ */
+html.rf-ghdark {
+  /* surfaces */
+  --color-body: #0d1117 !important;
+  --color-box-body: #0d1117 !important;
+  --color-box-body-highlight: #161b22 !important;
+  --color-box-header: #161b22 !important;
+  --color-card: #161b22 !important;
+  --color-menu: #161b22 !important;
+  --color-footer: #010409 !important;
+  --color-nav-bg: #010409 !important;
+  --color-nav-hover-bg: #21262d !important;
+  --color-secondary-nav-bg: #010409 !important;
+  --color-header-wrapper: #010409 !important;
+  --color-header-wrapper-transparent: #01040900 !important;
+  --color-project-board-bg: #161b22 !important;
+  --color-editor-line-highlight: #161b22 !important;
+  --color-expand-button: #1f6feb33 !important;
+  --color-overlay-backdrop: #010409cc !important;
+  --color-shadow: #010409cc !important;
+
+  /* text */
+  --color-text: #e6edf3 !important;
+  --color-text-dark: #f0f6fc !important;
+  --color-text-focus: #f0f6fc !important;
+  --color-text-light: #9198a1 !important;
+  --color-text-light-1: #9198a1 !important;
+  --color-text-light-2: #9198a1 !important;
+  --color-text-light-3: #6e7681 !important;
+  --color-caret: #e6edf3 !important;
+  --color-placeholder-text: #6e7681 !important;
+  --color-selection-bg: #388bfd66 !important;
+  --color-selection-fg: #f0f6fc !important;
+
+  /* borders & neutral scale */
+  --color-secondary: #30363d !important;
+  --color-secondary-bg: #21262d !important;
+  --color-secondary-hover: #30363d !important;
+  --color-secondary-active: #3d444d !important;
+  --color-secondary-dark-1: #3d444d !important;
+  --color-secondary-dark-2: #484f58 !important;
+  --color-secondary-dark-3: #545d68 !important;
+  --color-secondary-dark-4: #6e7681 !important;
+  --color-secondary-dark-5: #7d8590 !important;
+  --color-secondary-dark-6: #8b949e !important;
+  --color-secondary-dark-7: #9198a1 !important;
+  --color-secondary-dark-8: #b1bac4 !important;
+  --color-secondary-dark-9: #c9d1d9 !important;
+  --color-secondary-dark-10: #d1d9e0 !important;
+  --color-secondary-dark-11: #e6edf3 !important;
+  --color-secondary-dark-12: #e6edf3 !important;
+  --color-secondary-dark-13: #f0f6fc !important;
+  --color-secondary-light-1: #262c36 !important;
+  --color-secondary-light-2: #21262d !important;
+  --color-secondary-light-3: #161b22 !important;
+  --color-secondary-light-4: #0d1117 !important;
+  --color-secondary-alpha-10: #30363d19 !important;
+  --color-secondary-alpha-20: #30363d33 !important;
+  --color-secondary-alpha-30: #30363d4b !important;
+  --color-secondary-alpha-40: #30363d66 !important;
+  --color-secondary-alpha-50: #30363d80 !important;
+  --color-secondary-alpha-60: #30363d99 !important;
+  --color-secondary-alpha-70: #30363db3 !important;
+  --color-secondary-alpha-80: #30363dcc !important;
+  --color-secondary-alpha-90: #30363de1 !important;
+  --color-light: #6e76811a !important;
+  --color-light-border: #30363d !important;
+  --color-timeline: #30363d !important;
+  --color-diff-inactive: #161b22 !important;
+
+  /* interactive */
+  --color-hover: #6e768126 !important;
+  --color-active: #6e768133 !important;
+  --color-button: #21262d !important;
+  --color-input-background: #0d1117 !important;
+  --color-input-border: #30363d !important;
+  --color-input-border-hover: #6e7681 !important;
+  --color-input-text: #e6edf3 !important;
+  --color-input-toggle-background: #30363d !important;
+  --color-label-bg: #6e768166 !important;
+  --color-label-bg-alt: #6e768133 !important;
+  --color-label-hover-bg: #6e768199 !important;
+  --color-label-active-bg: #6e7681 !important;
+  --color-label-text: #e6edf3 !important;
+  --color-reaction-bg: #6e768126 !important;
+  --color-reaction-hover-bg: #388bfd33 !important;
+  --color-reaction-active-bg: #388bfd26 !important;
+  --color-tooltip-bg: #3d444d !important;
+  --color-tooltip-text: #f0f6fc !important;
+  --color-highlight-bg: #bb800926 !important;
+  --color-highlight-fg: #e3b341 !important;
+
+  /* accent = GitHub blue */
+  --color-primary: #4493f8 !important;
+  --color-primary-contrast: #ffffff !important;
+  --color-primary-hover: #58a6ff !important;
+  --color-primary-active: #1f6feb !important;
+  --color-primary-dark-1: #58a6ff !important;
+  --color-primary-dark-2: #79c0ff !important;
+  --color-primary-dark-3: #79c0ff !important;
+  --color-primary-dark-4: #a5d6ff !important;
+  --color-primary-dark-5: #a5d6ff !important;
+  --color-primary-dark-6: #cae8ff !important;
+  --color-primary-dark-7: #cae8ff !important;
+  --color-primary-light-1: #388bfd !important;
+  --color-primary-light-2: #1f6feb !important;
+  --color-primary-light-3: #1158c7 !important;
+  --color-primary-light-4: #0d419d !important;
+  --color-primary-light-5: #0d419d !important;
+  --color-primary-light-6: #0c2d6b !important;
+  --color-primary-light-7: #0c2d6b !important;
+  --color-primary-alpha-10: #388bfd19 !important;
+  --color-primary-alpha-20: #388bfd33 !important;
+  --color-primary-alpha-30: #388bfd4b !important;
+  --color-primary-alpha-40: #388bfd66 !important;
+  --color-primary-alpha-50: #388bfd80 !important;
+  --color-primary-alpha-60: #388bfd99 !important;
+  --color-primary-alpha-70: #388bfdb3 !important;
+  --color-primary-alpha-80: #388bfdcc !important;
+  --color-primary-alpha-90: #388bfde1 !important;
+  --color-accent: #f78166 !important;
+  --color-small-accent: #f78166 !important;
+  --color-indicator-active: #1f6feb !important;
+
+  /* named colours → Primer scales */
+  --color-red: #da3633 !important;
+  --color-red-light: #f85149 !important;
+  --color-red-dark-1: #b62324 !important;
+  --color-red-dark-2: #8e1519 !important;
+  --color-red-badge: #f85149 !important;
+  --color-red-badge-bg: #f8514926 !important;
+  --color-red-badge-hover-bg: #f8514940 !important;
+  --color-orange: #db6d28 !important;
+  --color-orange-light: #f0883e !important;
+  --color-orange-badge: #f0883e !important;
+  --color-orange-badge-bg: #db6d2826 !important;
+  --color-orange-badge-hover-bg: #db6d2840 !important;
+  --color-yellow: #9e6a03 !important;
+  --color-yellow-light: #d29922 !important;
+  --color-yellow-badge: #d29922 !important;
+  --color-yellow-badge-bg: #bb800926 !important;
+  --color-yellow-badge-hover-bg: #bb800940 !important;
+  --color-green: #238636 !important;
+  --color-green-light: #3fb950 !important;
+  --color-green-dark-1: #196c2e !important;
+  --color-green-dark-2: #0f5323 !important;
+  --color-green-badge: #3fb950 !important;
+  --color-green-badge-bg: #2ea04326 !important;
+  --color-green-badge-hover-bg: #2ea04340 !important;
+  --color-blue: #1f6feb !important;
+  --color-blue-light: #4493f8 !important;
+  --color-purple: #8957e5 !important;
+  --color-purple-light: #a371f7 !important;
+  --color-violet: #8957e5 !important;
+  --color-violet-light: #a371f7 !important;
+  --color-pink: #bf4b8a !important;
+  --color-pink-light: #db61a2 !important;
+  --color-grey: #6e7681 !important;
+  --color-grey-light: #9198a1 !important;
+
+  /* messages (flash / banners) */
+  --color-info-bg: #388bfd1a !important;
+  --color-info-border: #1f6feb66 !important;
+  --color-info-text: #e6edf3 !important;
+  --color-success-bg: #2ea0431a !important;
+  --color-success-border: #2ea04366 !important;
+  --color-success-text: #e6edf3 !important;
+  --color-warning-bg: #bb80091a !important;
+  --color-warning-border: #bb800966 !important;
+  --color-warning-text: #e6edf3 !important;
+  --color-error-bg: #f851491a !important;
+  --color-error-bg-hover: #f8514926 !important;
+  --color-error-bg-active: #f8514940 !important;
+  --color-error-border: #f8514966 !important;
+  --color-error-text: #e6edf3 !important;
+
+  /* code */
+  --color-code-bg: #0d1117 !important;
+  --color-markup-code-block: #151b23 !important;
+  --color-markup-code-inline: #656c7633 !important;
+  --color-markup-table-row: #161b22 !important;
+}
+
+/* Diff colours: GitHub's green/red. Skipped on colour-blind themes
+   (deuteranopia/protanopia/tritanopia) so their safe palettes stay intact. */
+html.rf-ghdark:not(.rf-ghdark-cb) {
+  --color-diff-added-row-bg: #2ea04326 !important;
+  --color-diff-added-row-border: #2ea04366 !important;
+  --color-diff-added-word-bg: #2ea04366 !important;
+  --color-diff-removed-row-bg: #f851491a !important;
+  --color-diff-removed-row-border: #f8514966 !important;
+  --color-diff-removed-word-bg: #f8514966 !important;
+}
+
+/* --- a few components that GitHub styles differently than the variables imply --- */
+
+/* Primary buttons are green on GitHub ("Code", "Create pull request" …). */
+html.rf-ghdark .ui.primary.button,
+html.rf-ghdark .ui.primary.buttons .button {
+  background: #238636 !important;
+  border-color: #f0f6fc1a !important;
+  color: #ffffff !important;
+}
+html.rf-ghdark .ui.primary.button:hover,
+html.rf-ghdark .ui.primary.buttons .button:hover {
+  background: #2ea043 !important;
+}
+
+/* Basic/secondary buttons: GitHub's grey buttons with a subtle border. */
+html.rf-ghdark .ui.basic.button,
+html.rf-ghdark .ui.button:not(.primary):not(.red):not(.green):not(.blue):not(.link) {
+  border-color: #f0f6fc1a !important;
+}
+
+/* Active repo tab: GitHub's coral underline. */
+html.rf-ghdark .secondary-nav .ui.secondary.pointing.menu .active.item,
+html.rf-ghdark .secondary-nav .ui.secondary.pointing.menu .active.item:hover {
+  border-color: #f78166 !important;
+}
+
+/* Header bars: GitHub's near-black with a bottom border (some instances,
+   e.g. Codeberg, hard-code their navbar colour instead of using the variable). */
+html.rf-ghdark #navbar,
+html.rf-ghdark .secondary-nav {
+  background: #010409 !important;
+}
+/* Only the navbar gets an extra line: the repo tab menu already draws its own
+   bottom border, a second one on .secondary-nav gave a double line. */
+html.rf-ghdark #navbar {
+  border-bottom: 1px solid #30363d !important;
+}
+/* Some Forgejo versions also draw a border at the bottom of the whole repo
+   header (below some padding), on top of the line under the tabs: GitHub has
+   only the tab line. */
+html.rf-ghdark .secondary-nav {
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+}
+html.rf-ghdark #navbar .item {
+  color: #e6edf3 !important;
+}

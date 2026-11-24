@@ -1,0 +1,44 @@
+/* GitHub-style label pills for Conventional Commit prefixes. */
+.rf-sc-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 6px;
+  vertical-align: text-bottom;
+}
+
+.rf-sc-badge {
+  --rf-color: #8b949e;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 2em;
+  border: 1px solid color-mix(in srgb, var(--rf-color) 45%, transparent);
+  background: color-mix(in srgb, var(--rf-color) 16%, transparent);
+  /* Mix with the inherited text colour: darker on light themes, lighter on dark. */
+  color: color-mix(in srgb, var(--rf-color) 72%, currentColor);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
+  text-decoration: none !important;
+  cursor: inherit;
+}
+
+.rf-sc-scope {
+  margin-left: 5px;
+  padding-left: 5px;
+  border-left: 1px solid color-mix(in srgb, var(--rf-color) 45%, transparent);
+  font-weight: 400;
+  opacity: 0.9;
+}
+
+.rf-sc-breaking {
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  font-weight: 600;
+}

@@ -1,0 +1,35 @@
+/*
+ * Colours for relative times. Applies to <relative-time> (inherits into its
+ * shadow DOM) and to the absolute-date <time> elements.
+ */
+
+/* --- Heat scheme -------------------------------------------------------------
+   Smooth gradient: --rf-heat (0–100 %, set per element by time-colors.js) mixes
+   green (< 1 hour) into orange ("6 months ago"). Mixing in oklch makes the
+   middle pass through yellow instead of muddy brown. Older dates: muted + dimmed. */
+html.rf-tc-heat {
+  --rf-heat-new: #2ea043;
+  --rf-heat-old: #c24e00;
+  --rf-heat-muted: var(--color-text-light-2, var(--color-text-light, GrayText));
+}
+html.rf-tc-heat [data-rf-heat] {
+  color: color-mix(in oklch, var(--rf-heat-old) var(--rf-heat, 0%), var(--rf-heat-new)) !important;
+}
+html.rf-tc-heat [data-rf-dim]      { color: var(--rf-heat-muted) !important; }
+html.rf-tc-heat [data-rf-dim="1"]  { opacity: 0.8; }
+html.rf-tc-heat [data-rf-dim="2"]  { opacity: 0.6; }
+
+/* --- Freshness scheme ------------------------------------------------------- */
+html.rf-tc-freshness [data-rf-age="minutes"] {
+  color: color-mix(in srgb, #2ea043 85%, currentColor) !important;
+  font-weight: 600;
+}
+html.rf-tc-freshness [data-rf-age="hours"] {
+  color: color-mix(in srgb, #2ea043 70%, currentColor) !important;
+}
+html.rf-tc-freshness [data-rf-age="days"] {
+  color: color-mix(in srgb, #d29922 70%, currentColor) !important;
+}
+/* weeks: theme default */
+html.rf-tc-freshness [data-rf-age="months"] { opacity: 0.75; }
+html.rf-tc-freshness [data-rf-age="years"]  { opacity: 0.55; }

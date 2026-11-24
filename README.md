@@ -39,3 +39,24 @@ My custom made bashrc with multiple functions and shortcuts. Some functions only
 ```
 The folder name should be self explanatory. Dont know the requirements. 
 ```
+
+## Linux programs
+Each one has its own README with requirements and usage.
+
+| Folder | What it is |
+|---|---|
+| `Linux/Programs/diskmap` | Disk usage analyzer in the spirit of WinDirStat, as a terminal program and a window (Rust) |
+| `Linux/Programs/controller_tester` | Local web app that tests Xbox, PlayStation and Nintendo controllers: buttons, sticks, triggers, gyro, rumble |
+| `Linux/Programs/jc-py-color-picker` | Linux port of the Joy-Con color picker |
+| `Linux/Programs/fh6-dash` | Live dashboard for Forza Horizon 6 "Data Out" telemetry (FastAPI) |
+| `Linux/Programs/gt7` | Live telemetry dashboard for Gran Turismo 7, and the notes on its protocol |
+| `Linux/Programs/rust-liquid-glass-replica` | A floating pane of iOS 26-style liquid glass for Hyprland (Rust) |
+| `Linux/Programs/pydownloader4downloads.khinsider` | Downloads whole albums from downloads.khinsider.com (Python, runs on Windows too) |
+| `Linux/Programs/nginx-ui` | Web file manager for Nginx and Traefik configuration files (Flask) |
+
+## Browser
+`Browser/forgejo-semantic-commits`
+##### Description
+```
+Firefox / Zen extension (Refined Forgejo) that makes Forgejo and Gitea nicer to use, in the spirit of Refined GitHub
+```

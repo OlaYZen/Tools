@@ -1,0 +1,26 @@
+/* Sticky navbar. The repo header (.secondary-nav) scrolls normally. */
+html.rf-sticky {
+  --rf-nav-h: 49px;
+  --rf-sticky-h: 49px;
+  /* Anchor links (#readme, #issuecomment-…) land below the sticky header. */
+  scroll-padding-top: calc(var(--rf-sticky-h) + 8px);
+}
+
+html.rf-sticky #navbar {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: var(--color-nav-bg);
+}
+
+/* Forgejo's own sticky elements on diff pages: push them below our header. */
+html.rf-sticky .repository .diff-detail-box {
+  top: var(--rf-sticky-h) !important;
+}
+html.rf-sticky .ui.attached.header.diff-file-header.sticky-2nd-row {
+  top: calc(var(--rf-sticky-h) + 44px) !important;
+}
+html.rf-sticky #diff-file-tree {
+  top: calc(var(--rf-sticky-h) + 47px) !important;
+  max-height: calc(100vh - var(--rf-sticky-h) - 47px) !important;
+}

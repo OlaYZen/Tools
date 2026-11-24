@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GT7 pit wall</title>
+<meta name="color-scheme" content="dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Azeret+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/dash.css">
+</head>
+<body>
+
+<header class="bezel">
+  <span class="link" id="link-state" aria-live="polite">connecting</span>
+  <span class="bezel-item">car <b id="hd-car">—</b></span>
+  <span class="bezel-item">lap <b id="hd-lap">—</b></span>
+  <span class="bezel-item">running <b id="hd-elapsed">—:——</b></span>
+  <span class="bezel-item">pos <b id="hd-pos">—</b></span>
+  <span class="bezel-spacer"></span>
+  <span class="bezel-item"><b id="hd-clock">—</b> <i class="daylight" id="hd-daylight"></i></span>
+  <span class="bezel-item"><b id="link-rate">0.0</b> pkt/s</span>
+  <span class="bezel-item">fmt <b id="link-fmt">—</b></span>
+  <span class="pit" id="pit" hidden></span>
+  <span class="fault" id="fault" hidden></span>
+</header>
+
+<main class="wall">
+
+  <div class="col col-radio">
+
+  <!-- The point of the screen: what to say, in the order to say it. -->
+  <section class="panel panel-radio" aria-labelledby="radio-h">
+    <h2 class="panel-head" id="radio-h">Radio <span class="panel-note">read top first</span></h2>
+    <ol class="calls" id="calls" aria-live="polite"></ol>
+    <p class="calls-empty" id="calls-empty">Nothing to report. Callouts appear as the stint gives you something worth saying.</p>
+  </section>
+
+  </div>
+  <div class="col col-stint">
+
+  <section class="panel panel-stint" aria-labelledby="stint-h">
+    <h2 class="panel-head" id="stint-h">Stint <span class="panel-note" id="stint-count"></span><span class="panel-note panel-note-warn" id="steer-note"></span></h2>
+    <div class="table-wrap">
+      <table class="laps">
+        <thead>
+          <tr>
+            <th class="col-num">lap</th><th>time</th><th>Δ best</th>
+            <th>fuel</th><th>max</th><th>lock</th><th>spin</th><th>steer</th><th>wot</th>
+          </tr>
+        </thead>
+        <tbody id="lap-rows"></tbody>
+      </table>
+      <p class="table-empty" id="laps-empty">No completed laps yet.</p>
+    </div>
+  </section>
+
+  </div>
+  <div class="col col-lower-left">
+
+  <section class="panel panel-race" aria-labelledby="race-h">
+    <h2 class="panel-head" id="race-h">Race</h2>
+    <div class="big"><span class="big-value" id="rc-pos">—</span><span class="big-unit" id="rc-cars">of —</span></div>
+    <p class="race-net" id="rc-net">Waiting for a race.</p>
+    <ul class="moves" id="rc-moves"></ul>
+    <p class="no-gaps">No gaps: GT7 sends telemetry for your car only, so there is
+      nothing about the cars ahead or behind. Places are all the protocol carries.</p>
+  </section>
+
+  <section class="panel panel-fuel" aria-labelledby="fuel-h">
+    <h2 class="panel-head" id="fuel-h">Fuel</h2>
+    <div class="big"><span class="big-value" id="fu-tank">—</span><span class="big-unit">L in tank</span></div>
+    <dl class="facts">
+      <div><dt>per lap</dt><dd id="fu-burn">—</dd></div>
+      <div><dt>laps left</dt><dd id="fu-laps">—</dd></div>
+      <div><dt>to go</dt><dd id="fu-togo">—</dd></div>
+    </dl>
+    <p class="verdict" id="fu-verdict">Waiting for two completed laps to measure burn.</p>
+  </section>
+
+  </div>
+  <div class="col col-lower-right">
+
+  <section class="panel panel-tyres" aria-labelledby="tyres-h">
+    <h2 class="panel-head" id="tyres-h">Tyres <span class="panel-note">lap average across the stint</span></h2>
+    <div class="corners" id="corners">
+      <div class="corner" data-corner="0"><span class="corner-id">FL</span><span class="corner-temp">—</span><span class="spark"></span></div>
+      <div class="corner" data-corner="1"><span class="corner-id">FR</span><span class="corner-temp">—</span><span class="spark"></span></div>
+      <div class="corner" data-corner="2"><span class="corner-id">RL</span><span class="corner-temp">—</span><span class="spark"></span></div>
+      <div class="corner" data-corner="3"><span class="corner-id">RR</span><span class="corner-temp">—</span><span class="spark"></span></div>
+    </div>
+    <dl class="facts">
+      <div><dt>front / rear</dt><dd id="ty-fr">—</dd></div>
+      <div><dt>left / right</dt><dd id="ty-lr">—</dd></div>
+      <div><dt>pace ±</dt><dd id="pa-consistency">—</dd></div>
+      <div><dt>trend</dt><dd id="pa-trend">—</dd></div>
+    </dl>
+  </section>
+
+  </div>
+  <div class="col col-map">
+
+  <section class="panel panel-map" aria-labelledby="map-h">
+    <h2 class="panel-head" id="map-h">Track
+      <span class="panel-note" id="map-state">recording</span>
+      <span class="map-tools">
+        <button type="button" class="tool" id="map-rotate" title="Rotate the map 90 degrees">rotate</button>
+        <button type="button" class="tool" id="map-flip" title="Mirror the map left to right">flip</button>
+        <button type="button" class="tool" id="map-rename" title="Name this circuit" hidden>rename</button>
+        <button type="button" class="tool" id="map-forget" title="Forget this saved circuit" hidden>forget</button>
+      </span>
+      <span class="panel-note" id="map-len"></span>
+    </h2>
+    <div class="canvas-box"><canvas id="trackmap"></canvas></div>
+    <p class="map-key">
+      <i class="k k-brake"></i>braking
+      <i class="k k-throttle"></i>throttle
+      <i class="k k-partial"></i>part
+      <i class="k k-coast"></i>coasting
+      <i class="k k-car"></i>car
+      <i class="k k-lane"></i>pit lane
+    </p>
+  </section>
+
+  <section class="panel panel-map panel-delta" aria-labelledby="delta-h">
+    <h2 class="panel-head" id="delta-h">Time lost
+      <span class="panel-note" id="delta-state">needs two laps</span>
+      <span class="panel-note" id="delta-total"></span>
+    </h2>
+    <div class="canvas-box"><canvas id="deltamap"></canvas></div>
+    <p class="map-key">
+      <i class="k k-lost"></i>losing
+      <i class="k k-gained"></i>gaining
+      <i class="k k-lock"></i>lock-up
+      <i class="k k-spin"></i>wheelspin
+    </p>
+    <ul class="worst" id="delta-worst"></ul>
+  </section>
+
+  <section class="panel panel-mapnote">
+    <p class="map-note">Traced from the car's own world position, not guessed from
+      speed and yaw, so it does not drift. The outline is one lap measured
+      line to line, and the marker sits on start/finish. Complete a lap and the
+      circuit is saved; drive it again and it is recognised from where you are,
+      so the full outline is there before you reach the first corner. Rotate and
+      flip to match how you picture it — your choice is remembered.</p>
+  </section>
+
+  </div>
+
+</main>
+
+<footer class="now">
+  <span class="now-label">now</span>
+  <span class="now-speed"><b id="nw-speed">0</b> kph</span>
+  <span class="now-gear" id="nw-gear">N</span>
+  <span class="now-rpm"><b id="nw-rpm">0</b> rpm</span>
+  <span class="now-bar"><i class="now-bar-label">thr</i><span class="segbar" id="bar-throttle" data-segments="14" data-hue="cool"></span></span>
+  <span class="now-bar"><i class="now-bar-label">brk</i><span class="segbar" id="bar-brake" data-segments="14" data-hue="hot"></span></span>
+  <span class="now-bar" id="nw-steer-wrap" hidden><i class="now-bar-label">steer</i><span class="steer"><i class="steer-centre"></i><i class="steer-dot" id="nw-steer"></i></span></span>
+  <span class="now-item">grip <b id="nw-grip">—</b> <i class="hint" title="Inferred from acceleration. GT7 sends no weather or wetness data.">inferred</i></span>
+  <span class="now-item">boost <b id="nw-boost">—</b></span>
+  <span class="now-item">best <b class="best" id="nw-best">—:——.———</b></span>
+</footer>
+
+<div class="curtain" id="curtain">
+  <p class="curtain-head">no telemetry</p>
+  <p class="curtain-body" id="curtain-body">Start a race in GT7. The console only sends data once you are past the main menu.</p>
+</div>
+
+<script src="/static/dash.js"></script>
+</body>
+</html>

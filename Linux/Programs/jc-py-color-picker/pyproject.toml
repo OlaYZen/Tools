@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jc-py-color-picker"
+version = "1.0.0"
+description = "Pure-Python Linux port of CTCaer's Joy-Con Toolkit color picker (HTML/web UI)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "GPL-2.0-or-later" }
+authors = [{ name = "Joy-Con Toolkit port" }]
+keywords = ["joy-con", "nintendo-switch", "color-picker", "hidraw", "pro-controller"]
+# No runtime dependencies — standard library only.
+dependencies = []
+
+[project.scripts]
+jc-color-picker = "jc_color_picker.server:main"
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.setuptools]
+packages = ["jc_color_picker"]
+
+[tool.setuptools.package-data]
+jc_color_picker = ["web/*", "retail_colors.xml"]

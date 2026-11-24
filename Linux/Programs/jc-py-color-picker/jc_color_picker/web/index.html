@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Joy-Con Color Picker</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">◑</span>
+      <div>
+        <h1>Joy-Con Color Picker</h1>
+        <p class="sub">Pure-Python Linux port of CTCaer's Joy-Con Toolkit</p>
+      </div>
+    </div>
+    <div class="device-pill" id="devicePill" title="Controller status">
+      <span class="dot" id="deviceDot"></span>
+      <span id="deviceName">…</span>
+      <button class="mini" id="btnReconnect" title="Re-scan for a controller">⟳</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ================= PICKER ================= -->
+    <section class="card picker">
+      <div class="select-color-row">
+        <span class="label-strong">Select Color:</span>
+        <div class="target-toggle" id="targetToggle">
+          <label><input type="radio" name="target" value="primary" checked /> <span id="lblPrimary">Body</span></label>
+          <label><input type="radio" name="target" value="secondary" /> <span id="lblSecondary">Buttons</span></label>
+        </div>
+      </div>
+
+      <div class="picker-grid">
+        <!-- old/new swatches -->
+        <div class="swatch-col">
+          <div class="swatch-stack">
+            <div class="swatch new" id="swNewPrimary" title="New body color"></div>
+            <div class="swatch old" id="swOldPrimary" title="Old body color — click to revert"></div>
+          </div>
+          <div class="swatch-caption">Body</div>
+          <div class="swatch-stack">
+            <div class="swatch new" id="swNewSecondary" title="New buttons color"></div>
+            <div class="swatch old" id="swOldSecondary" title="Old buttons color — click to revert"></div>
+          </div>
+          <div class="swatch-caption">Buttons</div>
+        </div>
+
+        <!-- 2D color box -->
+        <div class="box-wrap">
+          <canvas id="box" width="256" height="256"></canvas>
+        </div>
+
+        <!-- vertical slider -->
+        <div class="slider-wrap">
+          <canvas id="slider" width="28" height="256"></canvas>
+        </div>
+
+        <!-- channels -->
+        <div class="channels">
+          <div class="chan-group">
+            <label class="chan"><input type="radio" name="mode" value="H" checked /><span class="ch">H:</span>
+              <input class="num" id="inH" inputmode="numeric" maxlength="3" /><span class="unit">°</span></label>
+            <label class="chan"><input type="radio" name="mode" value="S" /><span class="ch">S:</span>
+              <input class="num" id="inS" inputmode="numeric" maxlength="3" /><span class="unit">%</span></label>
+            <label class="chan"><input type="radio" name="mode" value="B" /><span class="ch">B:</span>
+              <input class="num" id="inB" inputmode="numeric" maxlength="3" /><span class="unit">%</span></label>
+          </div>
+          <div class="chan-group">
+            <label class="chan"><input type="radio" name="mode" value="R" /><span class="ch">R:</span>
+              <input class="num" id="inR" inputmode="numeric" maxlength="3" /></label>
+            <label class="chan"><input type="radio" name="mode" value="G" /><span class="ch">G:</span>
+              <input class="num" id="inG" inputmode="numeric" maxlength="3" /></label>
+            <label class="chan"><input type="radio" name="mode" value="U" /><span class="ch">B:</span>
+              <input class="num" id="inU" inputmode="numeric" maxlength="3" /></label>
+          </div>
+          <div class="hex-row">
+            <span class="hash">#</span>
+            <input class="hex" id="inHex" maxlength="6" spellcheck="false" />
+            <button class="mini eyedrop" id="btnEyedrop" title="Pick a color from the screen">⛏</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= PRESETS ================= -->
+    <section class="card presets">
+      <div class="presets-head">
+        <span class="label-strong" id="presetRowTitle">Retail Colors</span>
+        <button class="btn ghost" id="btnSwitchGrips">Grips</button>
+      </div>
+      <div class="preset-row" id="retailRow"></div>
+
+      <div class="presets-head"><span class="label-strong">Your Presets (saved to colors.xml)</span></div>
+      <div class="preset-row big" id="retailUserRow"></div>
+      <div class="preset-row big" id="userRow"></div>
+
+      <div class="preset-actions">
+        <button class="btn" id="btnUpdatePreset" disabled>Save to selected slot</button>
+        <button class="btn warn" id="btnClearPreset" disabled>Clear slot</button>
+        <span class="hint" id="presetHint">Click an empty/your slot, then save the current color into it.</span>
+      </div>
+    </section>
+
+    <!-- ================= DEVICE ================= -->
+    <section class="card device">
+      <div class="presets-head"><span class="label-strong">Controller</span></div>
+      <div class="device-mode">
+        <label><input type="radio" name="cmode" value="bodybtn" checked /> Body &amp; Buttons</label>
+        <label><input type="radio" name="cmode" value="grips" /> Grips <span class="tiny">(Pro Controller)</span></label>
+      </div>
+      <div class="device-colors" id="deviceColors">
+        <div class="dc"><span>Body</span><b id="dcBody">—</b></div>
+        <div class="dc"><span>Buttons</span><b id="dcButtons">—</b></div>
+        <div class="dc grips"><span>Left grip</span><b id="dcLeft">—</b></div>
+        <div class="dc grips"><span>Right grip</span><b id="dcRight">—</b></div>
+      </div>
+      <div class="device-actions">
+        <button class="btn" id="btnRead">↧ Read from controller</button>
+        <button class="btn primary" id="btnWrite">↥ Write to controller</button>
+      </div>
+      <p class="status" id="statusLine"></p>
+    </section>
+  </main>
+
+  <footer>
+    <span>SPI colors at <code>0x6050</code> · Joy-Con writes 6 bytes, Pro Controller 12 (incl. grips).</span>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PadLab · Controller Tester</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">{ "imports": { "three": "./vendor/three/build/three.module.js", "three/addons/": "./vendor/three/addons/" } }</script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" class="logo" aria-hidden="true"><path d="M9 9h14a6 6 0 0 1 6 6l1 6a4 4 0 0 1-7 3l-2-3H11l-2 3a4 4 0 0 1-7-3l1-6a6 6 0 0 1 6-6z" fill="currentColor"/><circle cx="23" cy="14" r="1.6" fill="#0b0d12"/><circle cx="25.5" cy="16.5" r="1.6" fill="#0b0d12"/><path d="M8 13v5M5.5 15.5h5" stroke="#0b0d12" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <div>
+        <h1>PadLab</h1>
+        <p>Controller tester · Xbox · PlayStation · Nintendo</p>
+      </div>
+    </div>
+    <div class="pad-tabs" id="padTabs"></div>
+    <div class="top-actions">
+      <label class="select-wrap" title="Override the visual style">
+        <span>Style</span>
+        <select id="styleSelect">
+          <option value="auto">Auto</option>
+          <option value="xbox">Xbox</option>
+          <option value="playstation">PlayStation</option>
+          <option value="nintendo">Nintendo</option>
+        </select>
+      </label>
+      <button class="btn accent" id="hidConnectBtn" title="Connect over WebHID for gyro, DualSense Edge back buttons, battery, lightbar and adaptive triggers">
+        <span class="dot" id="hidDot"></span><span id="hidBtnLabel">Connect WebHID · gyro &amp; extras</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- Controller visual -->
+    <section class="card stage-card">
+      <div class="card-head">
+        <h2 id="padName">No controller</h2>
+        <div class="chips" id="padChips"></div>
+      </div>
+      <div class="stage" id="stage">
+        <div class="waiting" id="waiting">
+          <div class="pulse-ring"></div>
+          <p><strong>Press any button on your controller</strong></p>
+          <p class="muted">Browsers only expose a gamepad after its first input.</p>
+        </div>
+        <div class="pad3d" id="pad3d" hidden><div class="pad3d-loading" id="pad3dLoading">Loading 3D model…</div></div>
+        <div class="tilt" id="tilt">
+          <div class="shake" id="shake">
+            <div class="pad-svg" id="padSvg"></div>
+          </div>
+        </div>
+      </div>
+      <div class="stage-foot">
+        <div class="last-input" id="lastInput">—</div>
+        <div class="foot-right">
+          <span class="muted view-hint" id="viewHint" hidden>drag to rotate · double-click to reset</span>
+          <div class="seg" id="viewSeg" title="3D needs a model for this controller (PlayStation available)">
+            <button data-view="3d" class="on">3D</button>
+            <button data-view="2d">2D</button>
+          </div>
+          <div class="rate" id="pollRate">0 Hz</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Rumble -->
+    <section class="card rumble-card">
+      <div class="card-head">
+        <h2>Rumble</h2>
+        <div class="chips" id="rumbleChips"></div>
+      </div>
+
+      <button class="infinite-btn" id="infiniteBtn">
+        <span class="inf-icon">∞</span>
+        <span class="inf-text"><strong>Unlimited rumble</strong><small id="infiniteSub">Runs until you stop it · Esc to stop</small></span>
+        <span class="inf-timer" id="infiniteTimer">00:00</span>
+      </button>
+
+      <div class="sliders">
+        <label class="slider">
+          <span>Strong motor <small>low-freq · left</small></span>
+          <input type="range" id="strongSlider" min="0" max="100" value="100">
+          <output id="strongOut">100%</output>
+        </label>
+        <label class="slider">
+          <span>Weak motor <small>high-freq · right</small></span>
+          <input type="range" id="weakSlider" min="0" max="100" value="100">
+          <output id="weakOut">100%</output>
+        </label>
+        <label class="slider trig-only">
+          <span>Left trigger <small>impulse</small></span>
+          <input type="range" id="ltSlider" min="0" max="100" value="0">
+          <output id="ltOut">0%</output>
+        </label>
+        <label class="slider trig-only">
+          <span>Right trigger <small>impulse</small></span>
+          <input type="range" id="rtSlider" min="0" max="100" value="0">
+          <output id="rtOut">0%</output>
+        </label>
+      </div>
+
+      <div class="row">
+        <span class="label">Pattern</span>
+        <div class="seg" id="patternSeg">
+          <button data-pattern="constant" class="on">Constant</button>
+          <button data-pattern="pulse">Pulse</button>
+          <button data-pattern="heartbeat">Heartbeat</button>
+          <button data-pattern="ramp">Ramp</button>
+          <button data-pattern="wave">Wave</button>
+          <button data-pattern="alternate">L ↔ R</button>
+          <button data-pattern="quake">Quake</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="label">Timed</span>
+        <input type="range" id="durationSlider" min="100" max="5000" step="100" value="1000">
+        <output id="durationOut">1.0 s</output>
+        <button class="btn" id="playBtn">▶ Play</button>
+      </div>
+
+      <div class="row quick">
+        <button class="btn" data-quick="left">Left motor</button>
+        <button class="btn" data-quick="right">Right motor</button>
+        <button class="btn" data-quick="both">Both max</button>
+        <button class="btn trig-only" data-quick="lt">LT motor</button>
+        <button class="btn trig-only" data-quick="rt">RT motor</button>
+        <button class="btn danger" id="stopBtn">■ Stop</button>
+      </div>
+
+      <div class="row">
+        <span class="label">Send via</span>
+        <div class="seg" id="backendSeg">
+          <button data-backend="auto" class="on">Auto</button>
+          <button data-backend="gamepad">Gamepad API</button>
+          <button data-backend="hid">WebHID</button>
+        </div>
+      </div>
+      <div class="meters">
+        <div class="meter"><span>Strong</span><div class="bar"><i id="mStrong"></i></div></div>
+        <div class="meter"><span>Weak</span><div class="bar"><i id="mWeak"></i></div></div>
+        <div class="meter trig-only"><span>LT</span><div class="bar"><i id="mLT"></i></div></div>
+        <div class="meter trig-only"><span>RT</span><div class="bar"><i id="mRT"></i></div></div>
+      </div>
+      <p class="hint" id="rumbleStatus">Connect a controller to test rumble.</p>
+    </section>
+
+    <!-- Sticks -->
+    <section class="card sticks-card">
+      <div class="card-head">
+        <h2>Sticks</h2>
+        <button class="btn small" id="stickResetBtn">Reset circularity</button>
+      </div>
+      <div class="sticks">
+        <div class="stick-box">
+          <canvas id="stickL" width="260" height="260"></canvas>
+          <div class="stick-stats" id="stickLStats"></div>
+        </div>
+        <div class="stick-box">
+          <canvas id="stickR" width="260" height="260"></canvas>
+          <div class="stick-stats" id="stickRStats"></div>
+        </div>
+      </div>
+      <p class="hint">Rotate each stick slowly around its edge a few times. A circularity error under ~10% is typical for healthy sticks.</p>
+    </section>
+
+    <!-- Triggers -->
+    <section class="card triggers-card">
+      <div class="card-head">
+        <h2>Triggers</h2>
+        <button class="btn small" id="trigResetBtn">Reset</button>
+      </div>
+      <div class="triggers">
+        <div class="trig" id="trigL">
+          <div class="trig-label">LT</div>
+          <div class="trig-bar"><i></i><b class="peak"></b></div>
+          <div class="trig-num">0%</div>
+          <div class="trig-meta"></div>
+        </div>
+        <div class="trig" id="trigR">
+          <div class="trig-label">RT</div>
+          <div class="trig-bar"><i></i><b class="peak"></b></div>
+          <div class="trig-num">0%</div>
+          <div class="trig-meta"></div>
+        </div>
+        <canvas id="trigGraph" width="600" height="180"></canvas>
+      </div>
+      <p class="hint">Press each trigger all the way. The marker shows the deepest press, and "full travel" means it reached ≥ 99%. The meta line shows how far in the trigger was when it first registered.</p>
+    </section>
+
+    <!-- Buttons -->
+    <section class="card buttons-card">
+      <div class="card-head">
+        <h2>Buttons</h2>
+        <div class="chips"><span class="chip" id="btnProgress">0 / 0 tested</span><button class="btn small" id="btnResetBtn">Reset</button></div>
+      </div>
+      <p class="hint edge-hint" id="btnHint" hidden><strong>DualSense Edge detected.</strong> The browser's Gamepad API doesn't report the back paddles or Fn buttons. Click <em>Connect WebHID</em> at the top and pick the controller to read them directly.</p>
+      <div class="btn-grid" id="btnGrid"></div>
+    </section>
+
+    <!-- Motion -->
+    <section class="card motion-card">
+      <div class="card-head">
+        <h2>Motion · Gyro &amp; Accelerometer</h2>
+        <div class="chips">
+          <button class="btn small" id="calibBtn">Calibrate gyro</button>
+          <button class="btn small" id="recenterBtn">Recenter</button>
+        </div>
+      </div>
+      <div class="motion-empty" id="motionEmpty">
+        <p><strong>The Gamepad API can't read gyro data.</strong> Click <em>Connect WebHID</em> and pick your DualShock 4, DualSense, Switch Pro Controller or Joy-Con. This needs Chrome, Edge or another Chromium-based browser.</p>
+        <p class="muted">Xbox controllers don't have a gyro.</p>
+      </div>
+      <div class="motion" id="motionBody" hidden>
+        <div class="motion-nums">
+          <div><span>Gyro °/s</span><b id="gX">0</b><b id="gY">0</b><b id="gZ">0</b></div>
+          <div><span>Accel g</span><b id="aX">0</b><b id="aY">0</b><b id="aZ">0</b></div>
+          <div><span>Orientation</span><b id="oP">0°</b><b id="oY">0°</b><b id="oR">0°</b></div>
+        </div>
+        <canvas id="gyroGraph" width="600" height="150"></canvas>
+        <canvas id="accelGraph" width="600" height="150"></canvas>
+        <div class="row small-row">
+          <label class="check"><input type="checkbox" id="tiltToggle" checked> Tilt the 3D controller with the gyro</label>
+          <span class="muted" id="calibStatus"></span>
+        </div>
+        <div class="row small-row">
+          <span class="label">Invert</span>
+          <label class="check"><input type="checkbox" id="invP"> pitch</label>
+          <label class="check"><input type="checkbox" id="invY"> yaw</label>
+          <label class="check"><input type="checkbox" id="invR"> roll</label>
+        </div>
+      </div>
+    </section>
+
+    <!-- HID extras -->
+    <section class="card hid-card">
+      <div class="card-head">
+        <h2>Device (WebHID)</h2>
+        <div class="chips" id="hidChips"></div>
+      </div>
+      <div id="hidInfo" class="hid-info">
+        <p class="muted">Not connected. With WebHID you also get battery level, connection type, sensor report rate, touchpad, lightbar colour and DualSense adaptive triggers.</p>
+      </div>
+      <div class="hid-extra" id="psExtra" hidden>
+        <div class="row">
+          <span class="label">Lightbar</span>
+          <input type="color" id="lightbarColor" value="#3d7bff">
+          <button class="btn small" id="lightbarApply">Apply</button>
+        </div>
+        <div class="touchpad" id="touchpad"><div class="touch" id="touch0"></div><div class="touch" id="touch1"></div><span>Touchpad</span></div>
+      </div>
+      <div class="hid-extra" id="adaptiveExtra" hidden>
+        <h3>Adaptive triggers <small>DualSense</small></h3>
+        <div class="adaptive">
+          <div class="adaptive-side" data-side="left">
+            <span class="label">L2</span>
+            <select class="at-mode">
+              <option value="off">Off</option>
+              <option value="rigid">Resistance</option>
+              <option value="section">Section (click)</option>
+              <option value="vibrate">Vibrate</option>
+            </select>
+            <label>Start <input type="range" class="at-start" min="0" max="255" value="40"></label>
+            <label>End / Freq <input type="range" class="at-end" min="0" max="255" value="160"></label>
+            <label>Force <input type="range" class="at-force" min="0" max="255" value="200"></label>
+          </div>
+          <div class="adaptive-side" data-side="right">
+            <span class="label">R2</span>
+            <select class="at-mode">
+              <option value="off">Off</option>
+              <option value="rigid">Resistance</option>
+              <option value="section">Section (click)</option>
+              <option value="vibrate">Vibrate</option>
+            </select>
+            <label>Start <input type="range" class="at-start" min="0" max="255" value="40"></label>
+            <label>End / Freq <input type="range" class="at-end" min="0" max="255" value="160"></label>
+            <label>Force <input type="range" class="at-force" min="0" max="255" value="200"></label>
+          </div>
+        </div>
+        <button class="btn small" id="adaptiveApply">Apply trigger effects</button>
+      </div>
+    </section>
+
+    <!-- Raw -->
+    <section class="card raw-card">
+      <details>
+        <summary><h2>Raw data</h2><span class="muted">Every axis and button the browser reports</span></summary>
+        <div class="raw" id="raw"></div>
+      </details>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p class="credit" id="modelCredit"></p>
+    <p>Everything runs locally in your browser. Use Chrome, Edge or another Chromium-based browser to get WebHID (gyro) and full rumble support. Firefox only covers the basic buttons and sticks.</p>
+  </footer>
+
+  <div class="toast" id="toast"></div>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

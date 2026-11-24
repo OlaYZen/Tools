@@ -1,0 +1,146 @@
+/* Stacked avatars, GitHub style. */
+.rf-ca-stack {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.rf-ca-stack img.avatar {
+  margin: 0 !important;
+  /* ring in the page background colour so overlapping avatars stay distinct */
+  box-shadow: 0 0 0 2px var(--color-box-body, var(--color-body, #fff));
+  position: relative;
+}
+
+.rf-ca-stack img.avatar + img.avatar {
+  margin-left: -9px !important;
+}
+
+/* Earlier avatars sit on top, like GitHub. */
+.rf-ca-stack img.avatar:nth-child(1) { z-index: 3; }
+.rf-ca-stack img.avatar:nth-child(2) { z-index: 2; }
+.rf-ca-stack img.avatar:nth-child(3) { z-index: 1; }
+
+.rf-ca-more {
+  margin-left: 4px;
+  font-size: 11px;
+  color: var(--color-text-light-2, GrayText);
+}
+
+/* Forgejo's author cell is a flex row without vertical centring: centre it so
+   the avatars, the author and "and Co-author" share one line. */
+[data-rf-ca] {
+  align-items: center;
+}
+
+.rf-ca-names {
+  margin-left: 0.3em;
+  white-space: nowrap;
+  line-height: inherit;
+}
+
+/* Same weight/colour as the author link next to it. */
+.rf-ca-name {
+  font-weight: inherit;
+}
+.rf-ca-names a {
+  font-weight: inherit;
+}
+
+/* --- other trailers (Reviewed-by, Signed-off-by, …) ------------------------- */
+.rf-tr-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  background-color: currentColor;
+  -webkit-mask: var(--rf-icon) center / 14px 14px no-repeat;
+  mask: var(--rf-icon) center / 14px 14px no-repeat;
+}
+
+/* list rows: compact chips after the commit message */
+.rf-tr-chips {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.rf-tr-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+  padding: 0 6px 0 5px;
+  border: 1px solid var(--color-secondary);
+  border-radius: 2em;
+  color: var(--color-text-light-2, var(--color-text-light));
+  font-size: 11px;
+  line-height: 1;
+  cursor: help;
+  white-space: nowrap;
+}
+.rf-tr-chip .rf-tr-icon {
+  margin-right: 1px;
+}
+.rf-tr-chip img.avatar {
+  width: 16px !important;
+  height: 16px !important;
+  margin: 0 !important;
+}
+.rf-tr-chip img.avatar + img.avatar {
+  margin-left: -5px !important;
+  box-shadow: 0 0 0 1.5px var(--color-box-body, var(--color-body));
+}
+.rf-tr-more {
+  margin-left: 2px;
+}
+.rf-tr-reviewed-by,
+.rf-tr-approved-by,
+.rf-tr-acked-by {
+  border-color: color-mix(in srgb, #2ea043 45%, var(--color-secondary));
+}
+.rf-tr-reviewed-by .rf-tr-icon,
+.rf-tr-approved-by .rf-tr-icon,
+.rf-tr-acked-by .rf-tr-icon {
+  color: #3fb950;
+}
+
+/* single commit page: one row per trailer type */
+.rf-tr-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 10px 0 2px;
+  font-size: 13px;
+}
+.rf-tr-row {
+  display: contents;
+}
+.rf-tr-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-light-2, var(--color-text-light));
+}
+.rf-tr-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+.rf-tr-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.rf-tr-person img.avatar {
+  margin: 0 !important;
+}
+
+.rf-ca-others {
+  font-weight: inherit;
+  cursor: help;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}

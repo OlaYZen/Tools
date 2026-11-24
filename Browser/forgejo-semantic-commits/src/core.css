@@ -1,0 +1,47 @@
+/* Shared UI bits. Forgejo theme variables are used where available so it follows light/dark themes. */
+.rf-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 10000;
+  padding: 8px 14px;
+  border-radius: 6px;
+  background: var(--color-text, #24292f);
+  color: var(--color-body, #fff);
+  font-size: 13px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.25);
+  pointer-events: none;
+}
+
+/* Small inline button used by several features. */
+.rf-link-button {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--color-primary, #4183c4);
+  cursor: pointer;
+}
+.rf-link-button:hover {
+  text-decoration: underline;
+}
+
+/* Pill shared by size labels etc. */
+.rf-pill {
+  --rf-color: #8b949e;
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 2em;
+  border: 1px solid color-mix(in srgb, var(--rf-color) 45%, transparent);
+  background: color-mix(in srgb, var(--rf-color) 16%, transparent);
+  color: color-mix(in srgb, var(--rf-color) 72%, currentColor);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
