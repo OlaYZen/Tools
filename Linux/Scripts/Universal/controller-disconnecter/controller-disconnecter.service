@@ -1,0 +1,16 @@
+# Reference unit. Prefer: ./install-systemd-user-service.sh
+# (writes ~/.config/systemd/user/ with the correct ExecStart path.)
+[Unit]
+Description=DualSense idle Bluetooth disconnect (controller-disconnecter)
+Documentation=file://%h/Tools/Linux/Scripts/Universal/controller-disconnecter/controller-disconnecter.sh
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/Tools/Linux/Scripts/Universal/controller-disconnecter/controller-disconnecter.sh
+Restart=always
+RestartSec=5
+
+[Install]
+# Starts when your user systemd session reaches default (typical: at login).
+WantedBy=default.target
