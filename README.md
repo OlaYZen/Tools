@@ -52,7 +52,6 @@ Each one has its own README with requirements and usage.
 | `Linux/Programs/gt7` | Live telemetry dashboard for Gran Turismo 7, and the notes on its protocol |
 | `Linux/Programs/rust-liquid-glass-replica` | A floating pane of iOS 26-style liquid glass for Hyprland (Rust) |
 | `Linux/Programs/pydownloader4downloads.khinsider` | Downloads whole albums from downloads.khinsider.com (Python, runs on Windows too) |
-| `Linux/Programs/nginx-ui` | Web file manager for Nginx and Traefik configuration files (Flask) |
 
 ## Browser
 `Browser/forgejo-semantic-commits`
